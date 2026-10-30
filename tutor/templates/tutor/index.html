@@ -1,0 +1,217 @@
+{% load static pytutor %}<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PyTutor</title>
+  <script>
+    (function () {
+      var pref = "dark";
+      try { pref = localStorage.getItem("pt-theme") || "dark"; } catch (e) {}
+      var dark = pref === "dark" || (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="{% asset 'tutor/app.css' %}">
+</head>
+<body data-user="{{ user.get_username }}" data-static="{% static 'tutor/' %}">
+  {% icon_sprite %}
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">py</span><span class="brand-name">PyTutor</span></div>
+
+    <div class="project-picker">
+      <select id="projectSelect" aria-label="Proiect"></select>
+      <button class="icon-btn" id="newProjectBtn" title="Proiect nou" aria-label="Proiect nou">{% icon "plus" %}</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <button class="run-btn" id="runBtn" title="Rulează fișierul curent, apoi tutorele se uită la rezultat (Ctrl+Enter)">
+      {% icon "play" %}<span>Rulează și verifică</span>
+    </button>
+    <button class="tutor-pill" id="tutorPill" title="Arată / ascunde tutorele">
+      <span class="status-dot"></span><span>Tutor</span>
+    </button>
+
+    <div class="user-menu">
+      <button class="avatar-btn" id="userBtn" title="{{ user.get_username }}" aria-label="Cont" aria-haspopup="true">
+        {{ user.get_username|slice:":1"|upper }}
+      </button>
+      <div class="menu user-dropdown" id="userDropdown" hidden>
+        <div class="menu-head">
+          <strong>{{ user.first_name|default:user.get_username }}</strong>
+          <span class="muted">@{{ user.get_username }}{% if user.is_superuser %} · superadmin{% elif user.is_staff %} · admin{% endif %}</span>
+        </div>
+        <button type="button" id="levelMenuBtn">{% icon "chart-column" %}Nivelul tău</button>
+        <a class="menu-link" href="{% url 'progress' %}">{% icon "book-open" %}Progresul meu</a>
+        {% if user.is_staff %}<a class="menu-link" href="{% url 'admin:index' %}" target="_blank" rel="noopener">{% icon "settings" %}Administrare</a>{% endif %}
+        {% if user.is_superuser %}<a class="menu-link" href="{% url 'usage_report' %}" target="_blank" rel="noopener">{% icon "trending-up" %}Consum AI</a>{% endif %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit">{% icon "arrow-left" %}Ieși din cont</button>
+        </form>
+      </div>
+    </div>
+
+    {% include "tutor/_theme.html" %}
+  </header>
+
+  <main class="layout" id="layout" data-pane="chat">
+    <!-- ======= LECȚII ======= -->
+    <section class="chat-pane" id="chatPane">
+      <div class="pane-head">
+        <span class="pane-title">Lecții</span>
+        <span class="course-count" id="courseCount"></span>
+        <div class="spacer"></div>
+        <a class="text-btn" href="{% url 'progress' %}" title="Toate lecțiile și ce ai lucrat">Vezi tot</a>
+      </div>
+
+      <div class="course" id="course"><p class="muted course-loading">Se încarcă…</p></div>
+
+    </section>
+
+    <div class="v-resizer" id="vResizer" aria-hidden="true"></div>
+
+    <!-- ======= WORKBENCH ======= -->
+    <section class="work-pane" id="workPane">
+      <aside class="explorer" id="explorer">
+        <div class="pane-head">
+          <span class="pane-title">Explorer</span>
+          <div class="spacer"></div>
+          <button class="icon-btn sm" id="newFileBtn" title="Fișier nou" aria-label="Fișier nou">{% icon "file-plus" %}</button>
+          <button class="icon-btn sm" id="newFolderBtn" title="Folder nou" aria-label="Folder nou">{% icon "folder-plus" %}</button>
+          <button class="icon-btn sm" id="refreshTreeBtn" title="Reîncarcă" aria-label="Reîncarcă">{% icon "refresh-cw" %}</button>
+        </div>
+        <div class="tree" id="tree" role="tree"></div>
+      </aside>
+      <div class="explorer-scrim" id="explorerScrim"></div>
+
+      <div class="editor-area" id="editorArea">
+        <div class="editor-card">
+          <div class="tabs-bar">
+            <button class="icon-btn sm explorer-toggle" id="explorerToggle" title="Fișiere" aria-label="Arată fișierele">{% icon "folder" %}</button>
+            <div class="tabs" id="tabs"></div>
+            <button class="text-btn ask-sel-btn" id="askSelectionBtn" title="Întreabă tutorele despre codul selectat">Întreabă despre selecție</button>
+            <span class="save-state" id="saveState" hidden></span>
+          </div>
+          <div class="notes-bar" id="notesBar" hidden>
+            <span class="notes-dot" aria-hidden="true"></span>
+            <span id="notesBarText"></span>
+            <div class="spacer"></div>
+            <button class="text-btn" id="notesStartBtn">Începe</button>
+            <button class="icon-btn sm" id="notesClearBtn" title="Șterge explicațiile din acest fișier" aria-label="Șterge explicațiile">{% icon "x" %}</button>
+          </div>
+          <div class="editor-host" id="editorHost">
+            <div class="empty-editor" id="emptyEditor">
+              <p>Deschide un fișier din Explorer</p>
+              <p class="muted">sau creează unul nou. Ctrl+S salvează (oricum salvăm automat).</p>
+            </div>
+
+          </div>
+        </div>
+        <div class="h-resizer" id="hResizer" aria-hidden="true"></div>
+        <div class="terminal" id="terminal">
+          <div class="pane-head">
+            {% icon "square-terminal" "pane-icon" %}
+            <span class="pane-title">Terminal</span>
+            <span class="term-status" id="termStatus"></span>
+            <div class="spacer"></div>
+            <a class="server-link" id="serverLink" target="_blank" rel="noopener" hidden title="Serverul tău Django (după runserver)"></a>
+            <button class="text-btn" id="termAskBtn" title="Trimite output-ul tutorelui">Întreabă AI</button>
+            <button class="text-btn danger" id="termStopBtn" hidden>Oprește</button>
+            <button class="icon-btn sm" id="termClearBtn" title="Golește" aria-label="Golește terminalul">{% icon "trash-2" %}</button>
+            <button class="icon-btn sm term-collapse" id="termCollapseBtn" title="Restrânge" aria-label="Restrânge terminalul">{% icon "chevron-down" %}</button>
+          </div>
+          <pre class="term-out" id="termOut"></pre>
+          <div class="term-input-row">
+            <span class="term-prompt" id="termPrompt">$</span>
+            <input id="termInput" autocomplete="off" spellcheck="false" placeholder="python main.py">
+          </div>
+        </div>
+      </div>
+      <!-- Tutorele: coloană fixă în dreapta; ce ține de anumite linii apare în bule pe cod. -->
+      <aside class="tutor-float" id="tutorFloat">
+        <div class="tf-head" id="tfHead">
+          <span class="status-dot" id="aiStatus"></span>
+          <span class="pane-title">Tutor</span>
+          <div class="spacer"></div>
+          <button class="icon-btn sm" id="lastTaskBtn" title="Du-te la ultima sarcină primită de la tutore" aria-label="Ultima sarcină">{% icon "clipboard-list" %}</button>
+          <button class="text-btn secondary" id="resetChatBtn" title="Începe o conversație nouă pentru acest proiect">Conversație nouă</button>
+          <button class="icon-btn sm" id="tfMinBtn" title="Ascunde (rămâne butonul Tutor de sus)" aria-label="Ascunde tutorele">{% icon "minus" %}</button>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="composer">
+          <div class="quick-wrap">
+            <button class="quick-arrow left" id="quickLeft" hidden aria-label="Mai multe în stânga">{% icon "chevron-left" %}</button>
+            <div class="quick" id="quick">
+              <button data-step="check" data-quick="Am terminat. Verifică-mi codul și spune-mi ce pot îmbunătăți.">Verifică-mi codul</button>
+              <button data-step="error" data-quick="Am o eroare. Explică-mi ce înseamnă și cum o repar, pas cu pas." data-attach-terminal="1">Explică eroarea</button>
+              <button data-step="next" data-quick="Care e următorul pas?">Următorul pas</button>
+              <button data-step="exercise" data-quick="Dă-mi un exercițiu potrivit nivelului meu.">Exercițiu nou</button>
+            </div>
+            <button class="quick-arrow right" id="quickRight" hidden aria-label="Mai multe în dreapta">{% icon "chevron-right" %}</button>
+          </div>
+          <div class="ctx-chips" id="ctxChips"></div>
+          <div class="input-row">
+            <textarea id="chatInput" rows="2" placeholder="Scrie-i tutorelui… (Enter trimite, Shift+Enter rând nou)"></textarea>
+            <button class="send-btn" id="sendBtn" aria-label="Trimite">{% icon "send" %}</button>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <nav class="mobile-nav" id="mobileNav">
+    <button data-pane="chat" class="active">{% icon "book-open" %}<span>Lecții</span></button>
+    <button data-pane="files">{% icon "folder" %}<span>Fișiere</span></button>
+    <button data-pane="code">{% icon "code-xml" %}<span>Cod</span></button>
+    <button data-pane="terminal">{% icon "square-terminal" %}<span>Terminal</span></button>
+  </nav>
+
+  <!-- Dialog generic (prompt / confirm / profil) -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle"></h3>
+      <div id="modalBody"></div>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <!-- „Nivelul tău”, deschis din meniul contului (profile.js) -->
+  <div class="modal" id="profileModal" hidden>
+    <div class="modal-card profile-modal" role="dialog" aria-modal="true" aria-label="Nivelul tău">
+      <button class="icon-btn modal-x" id="profileClose" aria-label="Închide">{% icon "x" %}</button>
+      <section class="profile-card" id="profileCard"></section>
+    </div>
+  </div>
+
+  <div class="menu" id="ctxMenu" hidden></div>
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/django/django.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/runmode/runmode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+  <script src="{% asset 'tutor/icons.js' %}"></script>
+  <script src="{% asset 'tutor/md.js' %}"></script>
+  <script src="{% asset 'tutor/profile.js' %}"></script>
+  <script src="{% asset 'tutor/theme.js' %}"></script>
+  <script src="{% asset 'tutor/app.js' %}"></script>
+</body>
+</html>

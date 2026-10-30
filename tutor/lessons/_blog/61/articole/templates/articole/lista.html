@@ -1,0 +1,14 @@
+{% extends "articole/base.html" %}
+
+{% block continut %}
+  <h1>Articole</h1>
+  {% for articol in articole %}
+    <article class="articol">
+      <h2><a href="{% url 'detaliu' articol.id %}">{{ articol.titlu }}</a></h2>
+      {% include "articole/_meta.html" %}
+      <p>{{ articol.continut|truncatewords:12 }}</p>
+    </article>
+  {% empty %}
+    <p>Încă nu există articole.</p>
+  {% endfor %}
+{% endblock %}

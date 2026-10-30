@@ -1,0 +1,4 @@
+Sigle de limbaje din Devicon v2.16.0 (https://devicon.dev), licență MIT, copyright (c) 2015 konpa:
+python-original.svg, html5-original.svg, css3-original.svg, javascript-original.svg.
+
+Iconițele de interfață (../icons.svg) sunt din Lucide v0.460.0 (https://lucide.dev), licență ISC.

@@ -1,0 +1,104 @@
+{% extends "admin/base_site.html" %}
+{% load humanize pytutor %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .usage-table { width: 100%; }
+  .usage-table td.num, .usage-table th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .usage-table tfoot td { font-weight: 700; border-top: 2px solid var(--hairline-color); }
+  .usage-note { color: var(--body-quiet-color); margin: 6px 0 18px; }
+  .usage-warn { background: var(--message-warning-bg); padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; }
+  .usage-grid { display: grid; gap: 28px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Acasă</a> › Consum AI</div>
+{% endblock %}
+
+{% block content %}
+<p class="usage-note">
+  Costuri în lire, calculate din tokenii raportați de API și prețurile din
+  <a href="{% url 'admin:tutor_modelprice_changelist' %}">Prețuri modele</a>,
+  la cursul 1 USD = {{ rate }} GBP (<a href="{% url 'admin:tutor_costsettings_changelist' %}">modifică</a>).
+  Sunt estimări; factura reală vine de la furnizor.
+</p>
+
+{% if unpriced %}
+<div class="usage-warn">
+  Modele fără preț configurat (cost calculat ca £0): {{ unpriced|join:", " }}.
+  Adaugă-le în <a href="{% url 'admin:tutor_modelprice_add' %}">Prețuri modele</a>.
+</div>
+{% endif %}
+
+<div class="usage-grid">
+<div class="module">
+  <table class="usage-table">
+    <caption>Per utilizator</caption>
+    <thead>
+      <tr>
+        <th>Utilizator</th><th>Nivel</th>
+        <th class="num">Apeluri</th><th class="num">Tokeni in</th><th class="num">Tokeni out</th>
+        <th class="num">Azi</th><th class="num">7 zile</th><th class="num">30 zile</th><th class="num">Total</th>
+        <th>Ultimul apel</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <a href="{% url 'admin:tutor_usagerecord_changelist' %}?user__id__exact={{ r.user.pk }}">{{ r.user.username }}</a>
+          {% if r.user.first_name %}<span class="usage-note"> ({{ r.user.first_name }})</span>{% endif %}
+          {% if r.user.is_superuser %}<span class="usage-note"> · superadmin</span>{% endif %}
+        </td>
+        <td>{{ r.level }}</td>
+        <td class="num">{{ r.calls|intcomma }}</td>
+        <td class="num">{{ r.tok_in|intcomma }}</td>
+        <td class="num">{{ r.tok_out|intcomma }}</td>
+        <td class="num">{{ r.today|gbp }}</td>
+        <td class="num">{{ r.d7|gbp }}</td>
+        <td class="num">{{ r.d30|gbp }}</td>
+        <td class="num"><strong>{{ r.all|gbp }}</strong></td>
+        <td>{{ r.last|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="10">Niciun utilizator.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">Total</td>
+        <td class="num">{{ totals.calls|intcomma }}</td><td></td><td></td>
+        <td class="num">{{ totals.today|gbp }}</td>
+        <td class="num">{{ totals.d7|gbp }}</td>
+        <td class="num">{{ totals.d30|gbp }}</td>
+        <td class="num">{{ totals.all|gbp }}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="module">
+  <table class="usage-table">
+    <caption>Per model</caption>
+    <thead>
+      <tr><th>Model</th><th class="num">Apeluri</th><th class="num">Tokeni in</th><th class="num">Tokeni out</th><th class="num">Cost</th></tr>
+    </thead>
+    <tbody>
+      {% for m in by_model %}
+      <tr>
+        <td>{{ m.model }}</td>
+        <td class="num">{{ m.calls|intcomma }}</td>
+        <td class="num">{{ m.tok_in|intcomma }}</td>
+        <td class="num">{{ m.tok_out|intcomma }}</td>
+        <td class="num">{{ m.cost_gbp|gbp }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">Încă niciun apel AI.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+{% endblock %}

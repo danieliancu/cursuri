@@ -1,0 +1,3 @@
+-r requirements.txt
+# Testele din browser (tutor/tests_browser.py). Folosesc Chrome-ul instalat, deci nu e nevoie de `playwright install`.
+playwright==1.49.1

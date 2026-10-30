@@ -1,0 +1,11 @@
+{% extends "articole/base.html" %}
+
+{% block titlu %}{{ articol.titlu }} · Blogul Anei{% endblock %}
+
+{% block continut %}
+  <article class="articol">
+    <h1>{{ articol.titlu }}</h1>
+    {% include "articole/_meta.html" %}
+    {{ articol.continut|linebreaks }}
+  </article>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:"PyTutor admin" }}{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:"PyTutor — administrare" }}</a></div>
+{% endblock %}
+
+{% block userlinks %}
+  {% if user.is_superuser %}<a href="{% url 'usage_report' %}"><strong>Consum AI</strong></a> /{% endif %}
+  <a href="{% url 'index' %}">Înapoi la PyTutor</a> /
+  {{ block.super }}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

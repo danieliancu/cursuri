@@ -1,0 +1,14 @@
+{% load pytutor %}<button class="icon-btn theme-toggle" id="themeToggle" title="Schimbă tema (luminoasă / întunecată)" aria-label="Schimbă tema">
+  {% icon "sun" "when-dark" %}{% icon "moon" "when-light" %}
+</button>
+<div class="settings-menu">
+  <button class="icon-btn" id="settingsBtn" title="Setări" aria-label="Setări" aria-haspopup="true">{% icon "settings" %}</button>
+  <div class="menu settings-dropdown" id="settingsDropdown" hidden>
+    <div class="menu-label">Temă</div>
+    <div role="radiogroup" aria-label="Temă">
+      <button type="button" role="radio" data-theme-pref="system">{% icon "monitor" %}Ca sistemul</button>
+      <button type="button" role="radio" data-theme-pref="light">{% icon "sun" %}Luminoasă</button>
+      <button type="button" role="radio" data-theme-pref="dark">{% icon "moon" %}Întunecată</button>
+    </div>
+  </div>
+</div>

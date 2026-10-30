@@ -1,0 +1,14 @@
+{% extends "articole/base.html" %}
+
+{% block titlu %}Autentificare · Blogul Anei{% endblock %}
+
+{% block continut %}
+  <h1>Autentificare</h1>
+  <form method="post" class="formular">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Intră în cont</button>
+  </form>
+  <p>Nu ai cont? <a href="{% url 'inregistrare' %}">Creează unul</a>.</p>
+{% endblock %}

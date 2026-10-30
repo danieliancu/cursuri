@@ -1,0 +1,12 @@
+{% extends "articole/base.html" %}
+
+{% block titlu %}{{ titlu }} · Blogul Anei{% endblock %}
+
+{% block continut %}
+  <h1>{{ titlu }}</h1>
+  <form method="post" class="formular">
+    {% csrf_token %}
+    {{ formular.as_div }}
+    <button type="submit">Salvează</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "articole/base.html" %}
+
+{% block titlu %}Contact · Blogul Anei{% endblock %}
+
+{% block continut %}
+  <h1>Contact</h1>
+  <form method="post" class="formular">
+    {% csrf_token %}
+    {{ formular.as_div }}
+    <button type="submit">Trimite mesajul</button>
+  </form>
+{% endblock %}

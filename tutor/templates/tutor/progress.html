@@ -1,0 +1,83 @@
+{% load static pytutor %}<!doctype html>
+<html lang="ro" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Progresul meu · PyTutor</title>
+  <script>
+    (function () {
+      var pref = "dark";
+      try { pref = localStorage.getItem("pt-theme") || "dark"; } catch (e) {}
+      var dark = pref === "dark" || (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="{% asset 'tutor/app.css' %}">
+  <link rel="stylesheet" href="{% asset 'tutor/progress.css' %}">
+</head>
+<body class="progress-body" data-user="{{ user.get_username }}" data-static="{% static 'tutor/' %}">
+  {% icon_sprite %}
+  <header class="topbar">
+    <a class="brand" href="{% url 'index' %}"><span class="brand-mark">py</span><span class="brand-name">PyTutor</span></a>
+    <a class="text-btn back-link" href="{% url 'index' %}">
+      {% icon "chevron-left" %}<span>Înapoi la editor</span>
+    </a>
+    <div class="spacer"></div>
+    {% include "tutor/_theme.html" %}
+  </header>
+
+  <main class="progress-layout" id="layout" data-view="list">
+    <aside class="progress-side">
+      <nav class="modules" id="modules" aria-label="Curriculum"></nav>
+    </aside>
+
+    <section class="topic-pane" id="topicPane">
+      <div class="topic-empty" id="topicEmpty">
+        <h2>Alege un subiect</h2>
+        <p>Fiecare subiect are lecția completă și, dacă ai lucrat la el, codul tău și ce a spus tutorele despre el.</p>
+      </div>
+      <article class="topic" id="topic" hidden>
+        <button class="text-btn topic-back" id="topicBack">{% icon "chevron-left" %}Toate subiectele</button>
+        <div class="topic-head">
+          <div class="topic-crumb" id="topicModule"></div>
+          <h1 id="topicTitle"></h1>
+          <div class="topic-meta">
+            <span class="status-pill" id="topicStatus"></span>
+            <a class="primary-btn practice-btn" id="practiceBtn" href="#">{% icon "play" "fill" %}Exersează cu tutorele</a>
+          </div>
+        </div>
+        <div class="topic-tabs" role="tablist">
+          <button role="tab" data-tab="lesson" class="active">{% icon "book-open" %}Lecția</button>
+          <button role="tab" data-tab="work">{% icon "file-text" %}Ce ai făcut tu <span class="count" id="workCount"></span></button>
+          <button role="tab" data-tab="profile">{% icon "chart-column" %}Nivelul tău</button>
+        </div>
+        <div class="tab-panel bubble lesson" id="lessonPanel"></div>
+        <div class="tab-panel" id="workPanel" hidden></div>
+        <div class="tab-panel" id="profilePanel" hidden><section class="profile-card" id="profileCard"></section></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/django/django.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/runmode/runmode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+  <script src="{% asset 'tutor/icons.js' %}"></script>
+  <script src="{% asset 'tutor/md.js' %}"></script>
+  <script src="{% asset 'tutor/profile.js' %}"></script>
+  <script src="{% asset 'tutor/theme.js' %}"></script>
+  <script src="{% asset 'tutor/progress.js' %}"></script>
+</body>
+</html>

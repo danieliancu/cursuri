@@ -1,0 +1,37 @@
+{% extends "articole/base.html" %}
+
+{% block titlu %}{{ articol.titlu }} · Blogul Anei{% endblock %}
+
+{% block continut %}
+  <article class="articol">
+    <h1>{{ articol.titlu }}</h1>
+    {% include "articole/_meta.html" %}
+    {{ articol.continut|linebreaks }}
+    {% if articol.etichete.all %}
+      <p class="meta">Etichete: {{ articol.etichete.all|join:", " }}</p>
+    {% endif %}
+    {% if user == articol.autor %}
+      <p>
+        <a href="{% url 'articol_editeaza' articol.id %}">Editează articolul</a> ·
+        <a href="{% url 'articol_sterge' articol.id %}">Șterge articolul</a>
+      </p>
+    {% endif %}
+  </article>
+  <section class="comentarii" id="comentarii">
+    <h2>Comentarii ({{ articol.comentarii.count }})</h2>
+    {% for comentariu in articol.comentarii.all %}
+      <div class="comentariu">
+        <p class="meta"><strong>{{ comentariu.autor }}</strong> · {{ comentariu.data|date:"j F Y"|lower }}</p>
+        <p>{{ comentariu.text }}</p>
+      </div>
+    {% empty %}
+      <p>Niciun comentariu încă.</p>
+    {% endfor %}
+    <form action="{% url 'comentariu' articol.id %}" method="post" class="formular">
+      <h3>Lasă un comentariu</h3>
+      {% csrf_token %}
+      {{ formular.as_div }}
+      <button type="submit">Trimite comentariul</button>
+    </form>
+  </section>
+{% endblock %}

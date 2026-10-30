@@ -1,0 +1,29 @@
+[
+  {
+    "model": "articole.articol",
+    "pk": 1,
+    "fields": {
+      "titlu": "Primul meu program în Python",
+      "continut": "Totul a început cu un simplu print(\"Salut, lume!\"). Nu credeam că două cuvinte pe ecran pot să bucure atât de mult.\n\nAzi știu că a fost primul pas dintr-un drum lung: variabile, bucle, funcții și clase.",
+      "data_publicarii": "2026-09-14"
+    }
+  },
+  {
+    "model": "articole.articol",
+    "pk": 2,
+    "fields": {
+      "titlu": "De ce am ales Django",
+      "continut": "După primele luni cu Python, voiam să fac un site adevărat: cu pagini, cu bază de date și cu un loc unde să mă autentific.\n\nDjango are toate acestea „din cutie”, iar documentația lui e excelentă.",
+      "data_publicarii": "2026-10-02"
+    }
+  },
+  {
+    "model": "articole.articol",
+    "pk": 3,
+    "fields": {
+      "titlu": "O plimbare prin Cluj",
+      "continut": "Duminică am urcat pe dealul Cetățuia, de unde se vede tot Clujul. Pe drum am trecut prin Piața Unirii și pe lângă Teatrul Național.\n\nData viitoare vreau să ajung și în Grădina Botanică.",
+      "data_publicarii": "2026-10-20"
+    }
+  }
+]

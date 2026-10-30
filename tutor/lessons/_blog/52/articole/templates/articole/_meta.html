@@ -1,0 +1,4 @@
+<p class="meta">
+  {{ articol.data_publicarii|date:"j F Y"|lower }}
+  {% if articol.categorie %} · <span class="categorie">{{ articol.categorie }}</span>{% endif %}
+</p>

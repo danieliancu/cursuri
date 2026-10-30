@@ -1,0 +1,13 @@
+{% extends "articole/base.html" %}
+
+{% block titlu %}Șterge articolul · Blogul Anei{% endblock %}
+
+{% block continut %}
+  <h1>Ștergi articolul „{{ articol.titlu }}”?</h1>
+  <p>Comentariile lui se șterg și ele. Operația nu se poate anula.</p>
+  <form method="post" class="formular">
+    {% csrf_token %}
+    <button type="submit">Da, șterge</button>
+    <a href="{{ articol.get_absolute_url }}">Renunță</a>
+  </form>
+{% endblock %}

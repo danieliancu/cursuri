@@ -1,0 +1,27 @@
+{% load static %}
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titlu %}Blogul Anei{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'articole/stil.css' %}">
+</head>
+<body>
+  <header class="antet">
+    <a href="{% url 'lista' %}" class="sigla">Blogul Anei</a>
+    <nav>
+      <a href="{% url 'lista' %}">Articole</a>
+      <a href="{% url 'despre' %}">Despre</a>
+    </nav>
+  </header>
+
+  <main>
+    {% block continut %}{% endblock %}
+  </main>
+
+  <footer class="subsol">
+    <p>Ana Popescu, Cluj · 2026</p>
+  </footer>
+</body>
+</html>

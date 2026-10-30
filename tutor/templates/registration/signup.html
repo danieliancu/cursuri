@@ -1,0 +1,29 @@
+{% extends "registration/auth_base.html" %}
+{% block title %}Cont nou · PyTutor{% endblock %}
+{% block content %}
+<h1>Cont nou de elev</h1>
+<p class="auth-sub">Tutorele îți va evalua nivelul la prima lecție.</p>
+
+<form method="post" class="auth-form" novalidate>
+  {% csrf_token %}
+  <label>Nume de utilizator
+    <input type="text" name="username" autocomplete="username" required autofocus value="{{ form.username.value|default:'' }}">
+    {% for e in form.username.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+  </label>
+  <label>Prenume <span class="muted">(opțional)</span>
+    <input type="text" name="first_name" autocomplete="given-name" value="{{ form.first_name.value|default:'' }}">
+  </label>
+  <label>Parolă
+    <input type="password" name="password1" autocomplete="new-password" required>
+    {% for e in form.password1.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+  </label>
+  <label>Confirmă parola
+    <input type="password" name="password2" autocomplete="new-password" required>
+    {% for e in form.password2.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+  </label>
+  <p class="auth-hint">Minim 8 caractere, nu doar cifre, nu prea comună.</p>
+  <button type="submit" class="primary-btn">Creează contul</button>
+</form>
+
+<p class="auth-alt">Ai deja cont? <a href="{% url 'login' %}">Intră</a></p>
+{% endblock %}

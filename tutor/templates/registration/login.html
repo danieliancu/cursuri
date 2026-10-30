@@ -1,0 +1,28 @@
+{% extends "registration/auth_base.html" %}
+{% block title %}Autentificare · PyTutor{% endblock %}
+{% block content %}
+<h1>Intră în cont</h1>
+<p class="auth-sub">Continuă de unde ai rămas cu tutorele tău.</p>
+
+{% if form.non_field_errors %}
+  <div class="auth-error">Nume de utilizator sau parolă greșite.</div>
+{% endif %}
+
+<form method="post" class="auth-form">
+  {% csrf_token %}
+  <label>Nume de utilizator
+    <input type="text" name="username" autocomplete="username" required autofocus value="{{ form.username.value|default:'' }}">
+  </label>
+  <label>Parolă
+    <input type="password" name="password" autocomplete="current-password" required>
+  </label>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit" class="primary-btn">Intră</button>
+</form>
+
+{% if allow_signup %}
+  <p class="auth-alt">N-ai cont? <a href="{% url 'signup' %}">Creează unul</a></p>
+{% else %}
+  <p class="auth-alt muted">Contul îl primești de la administrator.</p>
+{% endif %}
+{% endblock %}
