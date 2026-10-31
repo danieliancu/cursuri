@@ -55,6 +55,7 @@ if depuneri > 0:
 
 [[test]]
 nume = "ținta atinsă, cu răspunsuri invalide pe drum"
+indiciu = "Un răspuns gol sau unul care nu e număr nu se adună și nu se numără. Totalul și contorul de depuneri cresc doar pe ramura cu număr valid; după fiecare depunere afișezi cât mai lipsește."
 stdin = "abc\n100\n30\n\nx\n50\n40\n"
 contine = ["70", "40.00"]
 regex = ['\b120\b', '\b3\b']
@@ -63,6 +64,7 @@ regex_de_ce = "Depunerile valide sunt 30, 50 și 40: 3 depuneri, total 120, medi
 
 [[test]]
 nume = "oprire cu stop"
+indiciu = "La „stop” bucla se oprește prin condiția ei (de exemplu `oprit = True`, iar bucla e `while strans < tinta and not oprit:`), fără `break`; după buclă afișezi media depunerilor făcute."
 stdin = "50\n20\nstop\n"
 contine = ["20.00"]
 de_ce = "La „stop” programul se termină înainte de țintă: o depunere de 20, media 20.00."

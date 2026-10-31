@@ -151,3 +151,7 @@ body.progress-body { overflow: hidden; }
   .sec-icon svg { width: 22px; height: 22px; }
   .work-file { margin-left: 0; }
 }
+
+/* Secțiunea deschisă dintr-un link (ex. „Recitește” din balonul unei erori): evidențiată scurt. */
+#lessonPanel h2[id], #lessonPanel h3[id] { scroll-margin-top: 16px; }
+#lessonPanel .flash { background: var(--accent-soft); border-radius: 6px; transition: background 0.6s; }

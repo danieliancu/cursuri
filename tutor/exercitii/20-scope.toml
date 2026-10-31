@@ -1,0 +1,74 @@
+titlu = "Contul fără variabile globale"
+enunt = "Programul cu soldul și istoricul, rescris fără global: funcții care întorc soldul nou, istoricul creat în main() și o limită de retragere de 200."
+structura = ["def", "return", "apel:main", "apel:inregistreaza", "apel:depune", "apel:retrage"]
+interzis = ["global"]
+indicii = [
+    "Șterge varianta veche din fișier (sau pune-o într-un comentariu): în programul nou nu mai apare `global`. `depune(sold, suma)` doar întoarce `sold + suma`.",
+    "`retrage(sold, suma)` întoarce un tuplu: `return sold - suma, True` dacă se poate, altfel `return sold, False`. La apel: `sold, reusit = retrage(sold, 30)`. Peste `LIMITA_RETRAGERE` refuzi cu un mesaj.",
+    "În `main()`: `sold = 100`, `istoric = []`, apoi aceleași operații ca la început (depune 50, retrage 30, retrage 500). `inregistreaza(istoric, \"+50\")` face `istoric.append(...)`. La final `print(sold, istoric)` dă `120 ['+50', '-30']`.",
+]
+inceput = '''
+LIMITA_RETRAGERE = 200
+
+
+# 1. depune(sold, suma) întoarce soldul nou, fără global (exemplu: așa se scrie)
+def depune(sold, suma):
+    return sold + suma
+
+
+# 2. retrage(sold, suma) -> (sold nou, reușit), refuză peste LIMITA_RETRAGERE cu un mesaj
+#    scrii așa: return sold - suma, True
+
+
+# 3. inregistreaza(istoric, operatie): modifică lista pe loc (scrie asta și într-un comentariu)
+
+
+# 4. main(): soldul și istoricul sunt locale; aceleași operații ca în programul vechi
+#    scrii așa: def main():
+#                   sold = 100
+#                   istoric = []
+#                   sold = depune(sold, 50)
+'''
+solutie = '''
+LIMITA_RETRAGERE = 200
+
+
+def depune(sold, suma):
+    return sold + suma
+
+
+def retrage(sold, suma):
+    if suma > LIMITA_RETRAGERE:
+        print(f"Retragerea de {suma} depășește limita de {LIMITA_RETRAGERE}.")
+        return sold, False
+    if suma > sold:
+        return sold, False
+    return sold - suma, True
+
+
+def inregistreaza(istoric, operatie):
+    # lista e aceeași cu cea din main(): append o modifică pe loc, deci nu trebuie întoarsă
+    istoric.append(operatie)
+
+
+def main():
+    sold = 100
+    istoric = []
+    sold = depune(sold, 50)
+    inregistreaza(istoric, "+50")
+    for suma in (30, 500):
+        sold, reusit = retrage(sold, suma)
+        if reusit:
+            inregistreaza(istoric, f"-{suma}")
+    print(sold, istoric)
+
+
+main()
+'''
+
+[[test]]
+nume = "aceleași operații ca programul vechi"
+indiciu = "Soldul nou îl întoarce funcția și îl salvezi la apel: `sold = depune(sold, 50)`, `sold, reusit = retrage(sold, 30)`. Retragerea de 500 e refuzată și nu intră în istoric."
+contine = ["120", "+50", "-30"]
+nu_contine = ["-500"]
+de_ce = "Ca programul vechi: 100 + 50 - 30 = 120, iar istoricul e ['+50', '-30']; retragerea de 500 e refuzată (peste limită) și nu apare în istoric."

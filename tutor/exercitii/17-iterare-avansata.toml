@@ -1,0 +1,60 @@
+titlu = "Vânzările cafenelei"
+enunt = "Analiza vânzărilor unei săptămâni: tabel cu enumerate și zip, ziua de vârf, totaluri și medii, any/all și zilele sortate după total."
+structura = ["apel:enumerate", "apel:zip", "apel:max", "apel:sum", "apel:any", "apel:all", "apel:sorted"]
+indicii = [
+    "Tabelul: `for i, (zi, c, p) in enumerate(zip(zile, cafele, prajituri, strict=True), start=1):` și afișezi `i`, ziua, `c`, `p` și `c + p`.",
+    "Ziua de vârf: `pe_zile = dict(zip(zile, cafele))`, apoi `max(pe_zile, key=pe_zile.get)`. Totalurile cu `sum(cafele)` și `sum(prajituri)`, media împărțind la `len(zile)`. `any(c > 200 for c in cafele)`, `all(p >= 30 for p in prajituri)`.",
+    "Sortarea după total: o listă de tupluri `(total, zi)`, apoi `sorted(..., reverse=True)` și afișezi zilele în ordinea asta: sâmbătă (305), duminică (260), vineri (220), joi, luni, miercuri, marți.",
+]
+inceput = '''
+zile = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"]
+cafele = [120, 95, 110, 130, 160, 210, 180]
+prajituri = [40, 35, 30, 45, 60, 95, 80]
+
+# 1. Tabelul numerotat de la 1: ziua, cafelele, prăjiturile și totalul zilei (exemplu: așa se scrie)
+for i, (zi, c, p) in enumerate(zip(zile, cafele, prajituri, strict=True), start=1):
+    print(f"{i}. {zi:<9} {c:>4} {p:>4} {c + p:>5}")
+
+# 2. Ziua cu cele mai multe cafele: dict(zip(...)) și max(..., key=...)
+#    scrii așa: pe_zile = dict(zip(zile, cafele))
+
+
+# 3. Totalul săptămânii și media zilnică pentru fiecare produs (sum)
+
+
+# 4. any / all: o zi cu peste 200 de cafele? cel puțin 30 de prăjituri în fiecare zi?
+#    scrii așa: print("Peste 200 de cafele într-o zi:", any(c > 200 for c in cafele))
+
+
+# 5. Zilele sortate după total, de la cea mai bună la cea mai slabă (tupluri (total, zi))
+#    scrii așa: sorted(..., reverse=True)
+'''
+solutie = '''
+zile = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"]
+cafele = [120, 95, 110, 130, 160, 210, 180]
+prajituri = [40, 35, 30, 45, 60, 95, 80]
+
+for i, (zi, c, p) in enumerate(zip(zile, cafele, prajituri, strict=True), start=1):
+    print(f"{i}. {zi:<9} {c:>4} {p:>4} {c + p:>5}")
+
+pe_zile = dict(zip(zile, cafele))
+print("Cele mai multe cafele:", max(pe_zile, key=pe_zile.get))
+
+print(f"Cafele: {sum(cafele)} în total, {sum(cafele) / len(zile):.2f} pe zi")
+print(f"Prăjituri: {sum(prajituri)} în total, {sum(prajituri) / len(zile):.2f} pe zi")
+
+print("Peste 200 de cafele într-o zi:", any(c > 200 for c in cafele))
+print("Cel puțin 30 de prăjituri zilnic:", all(p >= 30 for p in prajituri))
+
+totaluri = sorted([(c + p, zi) for zi, c, p in zip(zile, cafele, prajituri)], reverse=True)
+print("De la cea mai bună zi:", ", ".join(zi for total, zi in totaluri))
+'''
+
+[[test]]
+nume = "analiza săptămânii"
+indiciu = "Totalurile săptămânii sunt 1005 cafele și 385 de prăjituri. Ordinea după total (cafele + prăjituri), descrescător: sâmbătă, duminică, vineri, joi, luni, miercuri, marți; afișeaz-o după tabel."
+contine = ["1005", "385", "305"]
+regex = ['sambata[\s\S]*duminica[\s\S]*vineri[\s\S]*joi[\s\S]*luni[\s\S]*miercuri[\s\S]*marti']
+regex_text = "zilele sortate după total: sâmbătă, duminică, vineri, joi, luni, miercuri, marți"
+regex_de_ce = "Sortate după total (cafele + prăjituri), de la cea mai bună: sâmbătă (305), duminică (260), vineri (220), joi (175), luni (160), miercuri (140), marți (130)."
+de_ce = "Testul folosește listele din enunț: 1005 cafele, 385 de prăjituri; sâmbăta are cel mai mare total, 305."

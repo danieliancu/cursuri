@@ -10,7 +10,7 @@ import os
 import tempfile
 from io import StringIO
 from pathlib import Path
-from unittest import SkipTest
+from unittest import SkipTest, mock
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -18,7 +18,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
 from django.test import Client
 
-from . import workspace
+from . import ai, chapters, verificare, workspace
 from .models import Topic
 
 try:
@@ -119,12 +119,81 @@ class ChatMarkdownTests(BrowserTestCase):
 
 class DjangoLessonTests(BrowserTestCase):
     def test_django_lesson_outside_django_project_creates_no_folder(self):
-        """O lecție Django aleasă dintr-un proiect fără manage.py: un mesaj, fără folder `capitole/`."""
+        """O lecție Django aleasă dintr-un proiect fără manage.py: un mesaj, fără folder de capitol pentru ea.
+        (Folderul lecției curente, `capitole/01-…`, îl creează editorul la pornire.)"""
         self.open_editor()
         self.page.locator(".course-module summary", has_text="Django: fundamentele").click()
         self.page.locator(".course-link", has_text="Proiect și aplicații").click()
         expect(self.page.locator("#toast")).to_contain_text("lecție Django")
-        self.assertFalse((workspace.project_dir(self.user, "proiect") / "capitole").exists())
+        root = workspace.project_dir(self.user, "proiect") / "capitole"
+        self.assertEqual([p.name for p in root.glob("*django*")], [])
+
+
+class ErrorBalloonTests(BrowserTestCase):
+    def test_known_error_becomes_a_balloon_without_ai(self):
+        """O eroare cunoscută (tutor/erori.py) apare ca balon pe rândul ei, cu link spre lecție; tutorele AI tace."""
+        workspace.write_file(self.user, "proiect", "main.py", 'nume = "Ana"\nPrint(nume)\n')
+        with mock.patch.object(ai, "chat_stream") as chat:
+            self.open_editor()
+            self.tree_node("main.py").click()
+            expect(self.page.locator(".CodeMirror")).to_contain_text("Print(nume)")
+            self.page.click("#runBtn")
+            marker = self.page.locator(".note-marker").first
+            expect(marker).to_be_visible()
+            marker.click()
+            balloon = self.page.locator(".note-balloon")
+            expect(balloon).to_contain_text("print")
+            expect(balloon.locator('a[href^="/progres/#"]')).to_have_count(1)
+            expect(balloon.locator('a[href="#intreaba-ai"]')).to_have_count(1)
+        chat.assert_not_called()
+
+
+class ExerciseCheckTests(BrowserTestCase):
+    """„Rulează și verifică” pe exercițiul fix: verdictul vine din teste (fără AI), cu balon și indiciu."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(ai, "formuleaza", side_effect=lambda user, project, verdict, fallback: fallback)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.path = chapters.ensure(self.user, "proiect", Topic.objects.get(slug="primul-program"))
+        workspace.write_file(self.user, "proiect", self.path, 'print("Ana")\n')
+
+    def test_wrong_then_right(self):
+        self.open_editor()
+        expect(self.page.locator(".CodeMirror")).to_contain_text('print("Ana")')
+        self.page.click("#runBtn")
+        expect(self.page.locator("#messages .msg.user").last).to_contain_text("Verifică exercițiul")
+        marker = self.page.locator(".note-marker").first
+        expect(marker).to_be_visible()
+        marker.click()
+        expect(self.page.locator(".note-balloon")).to_contain_text("Indiciu 1/3")
+
+        solution = verificare.exercitiu("primul-program")["solutie"]
+        self.page.evaluate("(code) => document.querySelector('.CodeMirror').CodeMirror.setValue(code)", solution)
+        self.page.click("#runBtn")
+        expect(self.page.locator("#toast")).to_contain_text("învățat")
+        expect(self.page.locator(".note-marker")).to_have_count(0)
+
+
+class LocalStepTests(BrowserTestCase):
+    def test_next_step_answers_without_ai(self):
+        """„Următorul pas” la un elev nou: lecția 1 și exercițiul ei, din curriculum, fără tutorele AI."""
+        with mock.patch.object(ai, "chat_stream") as chat:
+            self.open_editor()
+            self.page.click('#quick [data-step="next"]')
+            expect(self.page.locator("#messages .msg.assistant").last).to_contain_text("lecția 1")
+        chat.assert_not_called()
+
+
+class LessonSectionLinkTests(BrowserTestCase):
+    def test_link_opens_the_lesson_at_the_section(self):
+        """`/progres/#slug:s-...` (linkul din balonul unei erori) deschide lecția la secțiunea respectivă."""
+        call_command("load_lessons", "--only", "08", stdout=StringIO(), stderr=StringIO())
+        self.page.goto(self.live_server_url + "/progres/#if-else:s-1-lipsesc-cele-doua-puncte")
+        heading = self.page.locator("#s-1-lipsesc-cele-doua-puncte")
+        expect(heading).to_have_text("1. Lipsesc cele două puncte")
+        expect(heading).to_be_in_viewport()
 
 
 class IconTests(BrowserTestCase):

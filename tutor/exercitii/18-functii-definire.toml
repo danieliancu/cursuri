@@ -1,0 +1,114 @@
+titlu = "Calculatorul de reducere, cu funcții"
+enunt = "Calculatorul de reducere din lecția 8, rescris cu funcțiile citeste_suma, cost_transport, reducere și afiseaza_bon."
+structura = ["def", "return", "while", "apel:citeste_suma", "apel:cost_transport", "apel:reducere", "apel:afiseaza_bon"]
+indicii = [
+    "`citeste_suma(mesaj)`: citește textul, înlocuiește virgula cu punct și cere din nou cât timp `not text.replace(\".\", \"\", 1).isdigit()`; la final `return float(text)`.",
+    "`reducere(valoare_cos, cod)` întoarce un tuplu, de exemplu `return valoare_cos * 0.10, \"\"` pentru STUDENT sau `return 0, \"Cod necunoscut\"`. Codul principal îl despachetează: `reducere_lei, mesaj = reducere(cos, cod)` și afișează mesajul dacă nu e gol.",
+    "Codul principal are doar câteva rânduri: `cos = citeste_suma(\"Valoarea coșului: \")`, `cod = input(...)`, `reducere_lei, mesaj = reducere(cos, cod)`, `afiseaza_bon(cos, reducere_lei, cost_transport(cos))`.",
+]
+inceput = '''
+# 1. citeste_suma(mesaj): cere până primește o sumă validă (cu zecimale sau virgulă) și întoarce un float
+#    (exemplu: așa se scrie o funcție care întoarce un rezultat)
+def citeste_suma(mesaj):
+    text = input(mesaj).strip().replace(",", ".")
+    while not text.replace(".", "", 1).isdigit():
+        text = input("Scrie o sumă validă: ").strip().replace(",", ".")
+    return float(text)
+
+
+# 2. cost_transport(valoare_cos): 15 sub 100 de lei, 0 de la 100 în sus
+#    scrii așa: def cost_transport(valoare_cos):
+#                   if valoare_cos < 100:
+#                       return 15
+
+
+# 3. reducere(valoare_cos, cod) -> (reducere_lei, mesaj); nu afișează nimic
+#    scrii așa: return valoare_cos * 0.10, ""
+
+
+# 4. afiseaza_bon(valoare_cos, reducere_lei, transport): bonul cu 2 zecimale
+
+
+# 5. Codul principal: doar câteva rânduri care apelează funcțiile
+#    scrii așa: cos = citeste_suma("Valoarea coșului: ")
+'''
+solutie = '''
+def citeste_suma(mesaj):
+    text = input(mesaj).strip().replace(",", ".")
+    while not text.replace(".", "", 1).isdigit():
+        text = input("Scrie o sumă validă: ").strip().replace(",", ".")
+    return float(text)
+
+
+def cost_transport(valoare_cos):
+    if valoare_cos < 100:
+        return 15
+    return 0
+
+
+def reducere(valoare_cos, cod):
+    cod = cod.strip().upper()
+    if cod == "STUDENT":
+        return valoare_cos * 0.10, ""
+    if cod == "VARA2026":
+        if valoare_cos >= 150:
+            return 20, ""
+        return 0, "VARA2026 se aplică doar coșurilor de cel puțin 150 lei."
+    if cod != "":
+        return 0, "Cod necunoscut"
+    return 0, ""
+
+
+def afiseaza_bon(valoare_cos, reducere_lei, transport):
+    print(f"Coș: {valoare_cos:.2f} lei")
+    print(f"Reducere: {reducere_lei:.2f} lei")
+    print(f"Transport: {transport:.2f} lei")
+    print(f"Total: {valoare_cos - reducere_lei + transport:.2f} lei")
+
+
+cos = citeste_suma("Valoarea coșului: ")
+cod = input("Cod de reducere: ")
+reducere_lei, mesaj = reducere(cos, cod)
+if mesaj:
+    print(mesaj)
+afiseaza_bon(cos, reducere_lei, cost_transport(cos))
+'''
+
+[[test]]
+nume = "o valoare invalidă, apoi 120 lei cu codul student"
+indiciu = "`citeste_suma` cere din nou până primește un număr: „abc” nu se acceptă, „120” da. Cu STUDENT reducerea e 10% (12.00), transportul 0, totalul 108.00."
+stdin = "abc\n120\nstudent\n"
+contine = ["12.00", "108.00"]
+de_ce = "„abc” se cere din nou; la 120 lei, STUDENT dă 12.00 lei reducere și transport gratuit, deci totalul e 108.00."
+
+[[test]]
+nume = "coș de 80 lei, fără cod"
+indiciu = "`cost_transport(80)` întoarce 15. Un cod gol nu e „necunoscut”: `reducere` întoarce `(0, \"\")`, iar mesajul gol nu se afișează."
+stdin = "80\n\n"
+contine = ["15.00", "95.00"]
+nu_contine = ["cod necunoscut"]
+de_ce = "Sub 100 lei transportul e 15 lei, deci totalul e 95.00. Un cod gol nu afișează niciun mesaj."
+
+[[test]]
+nume = "coș de 150 lei cu VaRa2026"
+indiciu = "În `reducere`, compară codul după `.upper()`; de la 150 de lei în sus VARA2026 dă 20 de lei."
+stdin = "150\nVaRa2026\n"
+contine = ["20.00", "130.00"]
+de_ce = "Codul se acceptă cu orice litere mari și mici; VARA2026 dă 20 lei reducere de la 150 lei în sus."
+
+[[test]]
+nume = "coș de 120 lei cu VARA2026"
+indiciu = "Sub 150 de lei, `reducere` întoarce `(0, mesaj)`, iar mesajul explică regula: „VARA2026 se aplică doar coșurilor de cel puțin 150 lei.”"
+stdin = "120\nvara2026\n"
+contine = ["120.00"]
+regex = ['\b150\b']
+regex_text = "mesajul despre pragul de 150 lei"
+regex_de_ce = "La un coș sub 150 lei, VARA2026 nu se aplică, iar programul spune de ce (pragul de 150 lei)."
+de_ce = "La 120 lei, VARA2026 nu dă reducere: totalul rămâne 120.00, cu mesajul despre pragul de 150 lei."
+
+[[test]]
+nume = "coș de 99,5 lei cu un cod greșit"
+indiciu = "`citeste_suma` înlocuiește virgula cu punct înainte de `float()`. Un cod care nu e gol și nu e cunoscut întoarce mesajul „Cod necunoscut”, afișat de codul principal."
+stdin = "99,5\nxyz\n"
+contine = ["cod necunoscut", "114.50"]
+de_ce = "Valoarea poate avea virgulă; un cod necunoscut afișează „Cod necunoscut”, iar totalul e 99.50 + 15 transport."

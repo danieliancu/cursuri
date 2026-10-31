@@ -37,6 +37,7 @@ print("Luni trăite:", 30 * 12)
 
 [[test]]
 nume = "fișa afișată"
+indiciu = "Pune titlul între două rânduri făcute doar din `=` (de exemplu `print(\"=\" * 30)` deasupra și dedesubt), fiecare informație cu `print()`-ul ei și un `print()` gol înainte de rândul cu calculul."
 regex = ['^[=-]{3,}$(.|\n)*?^[=-]{3,}$']
 regex_text = "titlul încadrat de două rânduri de `=` sau `-`"
 regex_de_ce = "Titlul trebuie încadrat de două rânduri făcute doar din `=` sau `-`."

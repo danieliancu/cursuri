@@ -46,6 +46,7 @@ print("Durata:", ore, "ore și", minute, "minute")
 
 [[test]]
 nume = "valorile din enunț"
+indiciu = "Litrii sunt `450 / 100 * 6.5`, costul e litri × `7.45`, apoi împărțit la 3 persoane. Durata în minute e `round(450 / 80 * 60)`; orele sunt `minute // 60`, iar restul `minute % 60`."
 contine = ["29.25", "217.91", "72.64"]
 regex = ['\b5 ore si 38 (de )?minute']
 regex_text = "5 ore și 38 minute"

@@ -136,7 +136,16 @@ window.PTMarkdown = (() => {
     // O listă întreruptă de un bloc de cod continuă cu <ol start="3">; cerculețele din chat (app.css) sunt un
     // contor CSS care ar porni iar de la 1, așa că îl pornim de la numărul listei.
     el.querySelectorAll("ol[start]").forEach((ol) => { ol.style.counterReset = `step ${ol.start - 1}`; });
+    // titlurile din lecții au id, ca un link (ex. din balonul unei erori) să deschidă direct secțiunea
+    if (lesson) el.querySelectorAll("h2, h3").forEach((h) => { h.id = anchor(h.textContent); });
     if (lesson) lessonSections(el); else taskCards(el);
+  }
+
+  /** Id-ul unui titlu de secțiune: „1. Lipsesc cele două puncte” → „s-1-lipsesc-cele-doua-puncte”. */
+  function anchor(text) {
+    const slug = text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return "s-" + slug;
   }
 
   /** Un bloc de cod simplu (fără Markdown), opțional cu numere de linie. */
@@ -148,5 +157,5 @@ window.PTMarkdown = (() => {
     return codeBlock(pre, text, lang, opts);
   }
 
-  return { render, code };
+  return { render, code, anchor };
 })();

@@ -81,6 +81,7 @@ else:
 
 [[test]]
 nume = "joc cu un număr repetat, meniu, cuvântul „copii”"
+indiciu = "Verifică dacă numărul a mai fost încercat ÎNAINTE să crești contorul; dacă da, `continue`. La cuvânt, compară `cuvant[i]` cu `cuvant[i + 1]` și oprește cu `break` la prima pereche."
 stdin = "50\n25\n25\n37\n1\n100\n2\n10\n9\n0\ncopii\n"
 contine = ["ghicit din 3", "212", "6.21"]
 nu_contine = ["nicio litera dubla"]
@@ -88,6 +89,7 @@ de_ce = "Cu 50, 25, 25, 37 al doilea 25 nu consumă o încercare, deci ghicești
 
 [[test]]
 nume = "joc pierdut, cuvânt fără litere duble"
+indiciu = "După bucla jocului, dacă nu ai ghicit, afișează numărul secret (37). La cuvânt, „Nicio literă dublă” stă pe `else`-ul lui `for`, care rulează doar fără `break`."
 stdin = "1\n2\n3\n4\n5\n6\n7\n0\ncarte\n"
 contine = ["37", "nicio litera dubla"]
 de_ce = "După 7 încercări greșite se afișează numărul secret (37). „carte” nu are litere duble."

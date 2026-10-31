@@ -182,12 +182,12 @@ def _refresh_header(user, project: str, topic: Topic, folder: str, main: str) ->
 
 
 def _starter(topic: Topic) -> str:
-    """Exemplul de început de sub enunț (tutor/exercitii/: `inceput`): primul pas scris ca model, apoi câte un
-    comentariu „scrii așa: …” la fiecare pas. Elevul vede cum se scrie și continuă după model."""
+    """Exemplul de început de sub enunț (tutor/exercitii/: `inceput`, sau tutor/exercitii/inceput/ la lecțiile
+    fără teste): primul pas scris ca model, apoi câte un comentariu „scrii așa: …” la fiecare pas. Elevul vede
+    cum se scrie și continuă după model."""
     from . import verificare
 
-    ex = verificare.exercitiu(topic.slug)
-    return (ex.get("inceput") or "").lstrip("\n") if ex else ""
+    return verificare.inceput(topic.slug).lstrip("\n")
 
 
 def _add_starter(user, project: str, topic: Topic, main: str) -> None:

@@ -738,7 +738,8 @@
     const parts = [e.explicatie];
     if (e.lectie) {
       const where = e.lectie.sectiune ? ` — „${e.lectie.sectiune}”` : ` (${e.lectie.titlu})`;
-      parts.push(`[Recitește: lecția ${e.lectie.numar}${where}](/progres/#${e.lectie.slug})`);
+      const section = e.lectie.sectiune ? ":" + PTMarkdown.anchor(e.lectie.sectiune) : "";
+      parts.push(`[Recitește: lecția ${e.lectie.numar}${where}](/progres/#${e.lectie.slug}${section})`);
     }
     parts.push("[Tot nu e clar? Întreabă AI](#intreaba-ai)");
     state.errorNote = path;

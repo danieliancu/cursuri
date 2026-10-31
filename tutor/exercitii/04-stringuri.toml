@@ -48,6 +48,7 @@ print("Inițiale:", parti[0][0] + "." + parti[1][0] + ".")
 
 [[test]]
 nume = "adresa din enunț"
+indiciu = "Lucrează pe `adresa_bruta` în ordinea din enunț: întâi spațiile (`split` + `join`), apoi `len()` și `find(\"nr.\")` pe adresa curățată, abia apoi `split(\",\")`, `.title()` și `.upper()`."
 contine = ["Str. Memorandumului Nr. 28", "CLUJ-NAPOCA", "C.N."]
 regex = ['\b40\b', '\b20\b']
 regex_text = "lungimea adresei curățate (40) și poziția lui „nr.” (20)"

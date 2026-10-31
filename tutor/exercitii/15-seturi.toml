@@ -1,0 +1,73 @@
+titlu = "Analizorul de texte"
+enunt = "Analizorul de texte: seturile de cuvinte a două texte, cuvintele comune, asemănarea în procente și căutarea unor cuvinte."
+structura = ["set", "for", "apel:sorted", "apel:replace", "format"]
+indicii = [
+    "Păstrează cele două texte din exemplul de început (testele le folosesc). Curățarea: `text.lower()`, apoi `for semn in \".,;:!?\": text = text.replace(semn, \"\")`, iar setul e `set(text.split())`.",
+    "Comune: `cuvinte1 & cuvinte2`; doar în primul: `cuvinte1 - cuvinte2`; toate: `cuvinte1 | cuvinte2`. Le afișezi cu `sorted(...)`, iar numărul de cuvinte distincte cu `len(...)`.",
+    "Asemănarea e `len(comune) / len(toate)`, afișată cu `{asemanare:.1%}` (46.7%). La căutare: `while` până la un rând gol și, pentru fiecare cuvânt, `in cuvinte1` și `in cuvinte2`.",
+]
+inceput = '''
+# 1. Cele două texte (exemplu: așa se scriu)
+text1 = "Clujul are o grădină botanică mare. Orașul are și o universitate veche!"
+text2 = "Iașul are o universitate veche și un palat mare; orașul are multe biserici."
+
+# 2. Setul de cuvinte al fiecărui text: litere mici, fără semnele .,;:!?
+#    scrii așa: curat1 = text1.lower()
+#               for semn in ".,;:!?":
+#                   curat1 = curat1.replace(semn, "")
+#               cuvinte1 = set(curat1.split())
+
+
+# 3. Cuvintele comune, cele doar din primul text și câte cuvinte distincte are fiecare
+#    scrii așa: print("Comune:", sorted(cuvinte1 & cuvinte2))
+
+
+# 4. Asemănarea: cuvinte comune / toate cuvintele distincte, ca procent
+#    scrii așa: print(f"Asemănare: {asemanare:.1%}")
+
+
+# 5. Cuvinte de la utilizator (rând gol = gata): în ambele texte, doar într-unul sau în niciunul
+#    scrii așa: cuvant = input("Cuvânt: ").strip().lower()
+'''
+solutie = '''
+text1 = "Clujul are o grădină botanică mare. Orașul are și o universitate veche!"
+text2 = "Iașul are o universitate veche și un palat mare; orașul are multe biserici."
+
+curat1 = text1.lower()
+curat2 = text2.lower()
+for semn in ".,;:!?":
+    curat1 = curat1.replace(semn, "")
+    curat2 = curat2.replace(semn, "")
+cuvinte1 = set(curat1.split())
+cuvinte2 = set(curat2.split())
+
+comune = cuvinte1 & cuvinte2
+toate = cuvinte1 | cuvinte2
+print("Comune:", ", ".join(sorted(comune)))
+print("Doar în primul:", ", ".join(sorted(cuvinte1 - cuvinte2)))
+print(f"Cuvinte distincte: {len(cuvinte1)} în primul, {len(cuvinte2)} în al doilea")
+asemanare = len(comune) / len(toate)
+print(f"Asemănare: {asemanare:.1%}")
+
+cuvant = input("Cuvânt (gol = gata): ").strip().lower()
+while cuvant != "":
+    if cuvant in cuvinte1 and cuvant in cuvinte2:
+        print("Apare în ambele texte.")
+    elif cuvant in cuvinte1:
+        print("Apare doar în primul text.")
+    elif cuvant in cuvinte2:
+        print("Apare doar în al doilea text.")
+    else:
+        print("Nu apare în niciun text.")
+    cuvant = input("Cuvânt (gol = gata): ").strip().lower()
+'''
+
+[[test]]
+nume = "analiza celor două texte și trei cuvinte căutate"
+indiciu = "Cuvintele comune sunt 7 (are, mare, o, orașul, și, universitate, veche) din 15 distincte în total, deci asemănarea e 46.7%. Doar în primul text: botanică, clujul, grădină (sortate)."
+stdin = "palat\nare\nzebra\n\n"
+contine = ["46.7%"]
+regex = ['botanica\W+clujul\W+gradina', '\b10\b', '\b12\b', '\bpalat\b[\s\S]{0,80}\b(doar|numai)\b', '\bzebra\b[\s\S]{0,80}\bnici']
+regex_text = "cuvintele doar din primul text, sortate (botanică, clujul, grădină), numărul de cuvinte distincte (10 și 12) și răspunsurile la căutare"
+regex_de_ce = "Primul text are 10 cuvinte distincte, al doilea 12. „palat” apare doar în al doilea text, iar „zebra” în niciunul."
+de_ce = "Cu textele din exemplul de început: 7 cuvinte comune din 15 distincte, deci asemănarea e 46.7%."

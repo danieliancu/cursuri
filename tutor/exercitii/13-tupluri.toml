@@ -1,0 +1,101 @@
+titlu = "Distanțele dintre orașe"
+enunt = "Distanța și durata cu mașina între două orașe din lista de tupluri, plus perechea cea mai apropiată."
+structura = ["for_despachetare", "for_imbricat", "apel:divmod"]
+indicii = [
+    "Păstrează lista `orase` din exemplul de început (testele folosesc coordonatele ei). Un oraș cerut e valid dacă apare printre nume: fă o listă cu numele (`for nume, x, y in orase:`) și cere din nou cât timp `oras not in nume_orase`.",
+    "Coordonatele le găsești cu despachetare: `for nume, x, y in orase:` și `if nume == oras1: x1, y1 = x, y`. Durata: `minute = round(distanta / 80 * 60)`, apoi `ore, minute = divmod(minute, 60)`.",
+    "Perechea cea mai apropiată: `for i in range(len(orase)):` și, în ea, `for j in range(i + 1, len(orase)):`. Ții minte distanța cea mai mică și cele două nume; la final, dacă `primul > al_doilea`, le interschimbi: `primul, al_doilea = al_doilea, primul`.",
+]
+inceput = '''
+# 1. Orașele, ca tupluri (oras, x, y), în km pe o hartă imaginară (exemplu: așa se scrie lista)
+orase = [
+    ("Cluj", 0, 0),
+    ("Iași", 280, 120),
+    ("Constanța", 420, -230),
+    ("București", 220, -200),
+    ("Timișoara", -250, -60),
+]
+
+# 2. Cele două orașe, cerute din nou dacă nu există (atunci afișezi orașele disponibile)
+#    scrii așa: oras1 = input("Primul oraș: ").strip()
+#               while oras1 not in nume_orase:
+
+
+# 3. Coordonatele lor (despachetare în for) și distanța
+#    scrii așa: for nume, x, y in orase:
+#               distanta = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+
+
+# 4. Distanța cu o zecimală și durata la 80 km/h, în ore și minute
+#    scrii așa: ore, minute = divmod(round(distanta / 80 * 60), 60)
+
+
+# 5. Perechea de orașe cele mai apropiate (două for-uri, unul în altul), primul nume cel mai mic alfabetic
+#    scrii așa: for i in range(len(orase)):
+#                   for j in range(i + 1, len(orase)):
+'''
+solutie = '''
+orase = [
+    ("Cluj", 0, 0),
+    ("Iași", 280, 120),
+    ("Constanța", 420, -230),
+    ("București", 220, -200),
+    ("Timișoara", -250, -60),
+]
+nume_orase = []
+for nume, x, y in orase:
+    nume_orase.append(nume)
+
+oras1 = input("Primul oraș: ").strip()
+while oras1 not in nume_orase:
+    print("Orașe disponibile:", ", ".join(nume_orase))
+    oras1 = input("Primul oraș: ").strip()
+oras2 = input("Al doilea oraș: ").strip()
+while oras2 not in nume_orase:
+    print("Orașe disponibile:", ", ".join(nume_orase))
+    oras2 = input("Al doilea oraș: ").strip()
+
+x1 = y1 = x2 = y2 = 0
+for nume, x, y in orase:
+    if nume == oras1:
+        x1, y1 = x, y
+    if nume == oras2:
+        x2, y2 = x, y
+distanta = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+ore, minute = divmod(round(distanta / 80 * 60), 60)
+print(f"Distanța {oras1} – {oras2}: {distanta:.1f} km")
+print(f"Cu mașina, la 80 km/h: {ore} ore și {minute} minute")
+
+cea_mai_mica = None
+primul = al_doilea = ""
+for i in range(len(orase)):
+    for j in range(i + 1, len(orase)):
+        a, xa, ya = orase[i]
+        b, xb, yb = orase[j]
+        d = ((xb - xa) ** 2 + (yb - ya) ** 2) ** 0.5
+        if cea_mai_mica is None or d < cea_mai_mica:
+            cea_mai_mica, primul, al_doilea = d, a, b
+if primul > al_doilea:
+    primul, al_doilea = al_doilea, primul
+print(f"Cele mai apropiate: {primul} și {al_doilea} ({cea_mai_mica:.1f} km)")
+'''
+
+[[test]]
+nume = "Cluj – Iași"
+indiciu = "Distanța e `((280 - 0) ** 2 + (120 - 0) ** 2) ** 0.5`, afișată cu `:.1f` (304.6). Durata: `divmod(round(304.6 / 80 * 60), 60)` dă 3 ore și 48 de minute. Perechea cea mai apropiată e București – Constanța, cu București primul."
+stdin = "Cluj\nIași\n"
+contine = ["304.6"]
+regex = ['\b3\b\D{1,12}\b48\b', 'bucuresti\b[^\n]{0,12}\bconstanta\b']
+regex_text = "durata „3 ore și 48 minute” și perechea „București și Constanța”, în ordinea asta"
+regex_de_ce = "La 80 km/h, 304.6 km înseamnă 3 ore și 48 de minute. Cele mai apropiate orașe sunt București și Constanța (202.2 km); în listă, Constanța e înaintea Bucureștiului, deci trebuie interschimbate."
+de_ce = "Cu orașele din exemplul de început, Cluj (0, 0) și Iași (280, 120) sunt la 304.6 km."
+
+[[test]]
+nume = "un oraș care nu există"
+indiciu = "Când orașul nu e în listă, afișează orașele disponibile (toate numele, de exemplu cu `\", \".join(nume_orase)`) și cere-l din nou, cu un `while`."
+stdin = "Brașov\nTimișoara\nCluj\n"
+contine = ["257.1"]
+regex = ['brasov[\s\S]*\biasi\b[\s\S]*timisoara[\s\S]*cluj']
+regex_text = "lista orașelor disponibile, afișată după „Brașov”"
+regex_de_ce = "„Brașov” nu e în listă: programul afișează orașele disponibile și cere din nou orașul."
+de_ce = "După „Brașov” (inexistent), programul cere din nou primul oraș; Timișoara (-250, -60) – Cluj (0, 0) e la 257.1 km."

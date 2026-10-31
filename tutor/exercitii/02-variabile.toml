@@ -55,5 +55,6 @@ print(type(pret_paine), type(cantitate_paine))
 
 [[test]]
 nume = "bonul afișat"
+indiciu = "Fiecare informație pe rândul ei: un `print()` pentru client, câte unul pentru fiecare dintre cele trei produse și unul pentru total."
 min_randuri = 5
 de_ce = "Bonul are numele clientului, câte un rând pe fiecare dintre cele trei produse și totalul."

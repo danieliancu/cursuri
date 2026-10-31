@@ -4,7 +4,10 @@ Pentru fiecare exercițiu:
 - soluția de referință (`solutie`) trece toate verificările;
 - fișierul gol de la începutul capitolului NU trece;
 - exemplul de început (`inceput`, pus sub enunț în fișierul capitolului) e Python valid și NU trece singur;
-- fiecare verificare de structură și fiecare indiciu există (3 indicii, în trepte).
+- fiecare verificare de structură și fiecare indiciu există (3 indicii, în trepte, plus `indiciu` la fiecare test).
+
+Apoi exemplele de început fără teste (tutor/exercitii/inceput/NN-slug.py): Python valid, fără nume
+nedefinite, cu pași „scrii așa”, pentru o lecție care n-are exercițiu fix.
 
 Programele rulează local (cu interpretorul curent), cu ecoul lui input() din lecții.
 Folosire: python tools/verifica_exercitii.py [01 08 ...]
@@ -48,6 +51,9 @@ def check(ex: dict) -> list[str]:
         problems.append("trebuie exact 3 indicii")
     if not ex.get("test"):
         problems.append("niciun test")
+    for t in ex.get("test", []):
+        if not t.get("indiciu"):
+            problems.append(f"testul „{t.get('nume', '?')}” n-are `indiciu` (primul indiciu când pică)")
     for what in ex.get("structura", []) + ex.get("interzis", []):
         try:
             verificare._has(verificare.ast.parse("x = 1"), "x = 1", what)
@@ -80,6 +86,29 @@ def check(ex: dict) -> list[str]:
     return problems
 
 
+def check_inceput(path: Path) -> list[str]:
+    """Un exemplu de început fără teste (tutor/exercitii/inceput/NN-slug.py)."""
+    problems = []
+    lesson = ROOT / "tutor" / "lessons" / f"{path.stem}.md"
+    if not lesson.is_file():
+        problems.append(f"nu există lecția {lesson.name}")
+    if verificare.exercitiu(path.stem[3:]):
+        problems.append("lecția are deja exercițiu fix: exemplul se scrie acolo, în `inceput`")
+    source = path.read_text(encoding="utf-8")
+    try:
+        compile(source, path.name, "exec")
+    except SyntaxError as e:
+        problems.append(f"nu e Python valid: {e.msg} (rândul {e.lineno})")
+    grave = [o for o in verificare.observatii(source, path.name) if o["grav"]]
+    if grave:
+        problems.append(f"folosește nume nedefinite: {grave[0]['text']}")
+    if "scrii așa" not in source:
+        problems.append("lipsesc pașii „scrii așa: …”")
+    if not source.lstrip().startswith("# 1."):
+        problems.append("trebuie să înceapă cu primul pas („# 1. …”)")
+    return problems
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     only = set(sys.argv[1:])
@@ -90,6 +119,14 @@ def main() -> int:
         problems = check(ex)
         errors += len(problems)
         print(f"{ex['sursa']}: {len(ex['test'])} teste — " + ("OK" if not problems else f"{len(problems)} probleme"))
+        for p in problems:
+            print(f"  ✗ {p}")
+    for path in sorted(verificare.INCEPUT_DIR.glob("*.py")):
+        if only and path.stem[:2] not in only and path.stem[3:] not in only:
+            continue
+        problems = check_inceput(path)
+        errors += len(problems)
+        print(f"inceput/{path.name}: " + ("OK" if not problems else f"{len(problems)} probleme"))
         for p in problems:
             print(f"  ✗ {p}")
     return 1 if errors else 0

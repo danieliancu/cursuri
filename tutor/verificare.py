@@ -17,6 +17,7 @@ Formatul unui test:
     min_randuri = 5                             # câte rânduri ne-goale trebuie să afișeze cel puțin
     rand_gol = true                             # trebuie să afișeze și un rând gol
     de_ce = "..."                               # ce verifică testul, spus elevului când pică
+    indiciu = "..."                             # primul indiciu când pică testul ăsta (apoi cele generale)
 
 `contine`, `nu_contine` și `regex` nu țin cont de literele mari/mici, de diacritice și de spațiile multiple
 („Parolă puternică” = „parola  puternica”), ca elevul să aibă libertate la formulare.
@@ -39,6 +40,7 @@ except ModuleNotFoundError:  # Python < 3.11
 from . import erori, iesire
 
 EXERCITII_DIR = Path(__file__).resolve().parent / "exercitii"
+INCEPUT_DIR = EXERCITII_DIR / "inceput"  # doar exemple de început, pentru lecțiile fără exercițiu fix
 _NAME_RE = re.compile(r"^(?P<n>\d{2})-(?P<slug>[a-z0-9-]+)\.toml$")
 MAX_OUTPUT = 1500  # cât din output intră în verdict (și la AI)
 
@@ -63,6 +65,16 @@ def exercitiu(slug: str) -> dict | None:
 
 def toate() -> list[dict]:
     return list(_all().values())
+
+
+def inceput(slug: str) -> str:
+    """Exemplul de început al lecției: `inceput` din exercițiul fix, altfel `exercitii/inceput/NN-slug.py`
+    (lecțiile fără teste au doar exemplul, iar fișierul capitolului îl verifică tutorele)."""
+    ex = exercitiu(slug)
+    if ex and ex.get("inceput"):
+        return ex["inceput"]
+    p = next(INCEPUT_DIR.glob(f"[0-9][0-9]-{slug}.py"), None)
+    return p.read_text(encoding="utf-8") if p else ""
 
 
 def exercitiu_numar(n: int) -> dict | None:
@@ -109,6 +121,24 @@ STRUCTURI = {
     "modulo": "restul împărțirii `%`",
     "reatribuire": "o variabilă care primește o valoare nouă (reatribuire)",
     "def": "o funcție (`def`)",
+    "return": "o funcție care întoarce un rezultat (`return`)",
+    "lista": "o listă (`[...]`)",
+    "dict": "un dicționar (`{cheie: valoare}`)",
+    "set": "un set (`set(...)` sau `{a, b}`)",
+    "for_despachetare": "un `for` cu despachetare (ex. `for nume, x, y in orase:`)",
+    "for_imbricat": "două bucle `for` una în alta",
+    "list_comprehension": "un list comprehension (`[... for ... in ...]`)",
+    "dict_comprehension": "un dict comprehension (`{cheie: valoare for ... in ...}`)",
+    "set_comprehension": "un set comprehension (`{... for ... in ...}`)",
+    "lambda": "o funcție `lambda`",
+    "argument_implicit": "un parametru cu valoare implicită (ex. `zecimale=2`)",
+    "args": "un parametru `*args` (oricâte argumente poziționale)",
+    "keyword_only": "parametri doar cu nume, după `*` (ex. `def f(a, *, prag=5)`)",
+    "global": "`global`",
+    "docstring": "un docstring la fiecare funcție (primul rând din corp, între `\"\"\"`)",
+    "type_hints": "type hints la toți parametrii și la rezultat (`-> ...`), la fiecare funcție",
+    "default_mutabil": "o valoare implicită mutabilă (`=[]` sau `={}`) la un parametru",
+    "alias_tip": "un alias de tip (ex. `Catalog = dict[str, list[float]]`)",
 }
 
 
@@ -173,6 +203,51 @@ def _has(tree: ast.AST, source: str, what: str) -> bool:
         return any(v >= 2 for v in seen.values())
     if what == "def":
         return any(isinstance(n, ast.FunctionDef) for n in nodes)
+    funcs = [n for n in nodes if isinstance(n, ast.FunctionDef)]
+    if what == "return":
+        return any(isinstance(n, ast.Return) and n.value is not None for n in nodes)
+    if what == "lista":
+        return any(isinstance(n, (ast.List, ast.ListComp)) for n in nodes) or "list" in _calls(tree)
+    if what == "dict":
+        return any(isinstance(n, (ast.Dict, ast.DictComp)) for n in nodes) or "dict" in _calls(tree)
+    if what == "set":
+        return any(isinstance(n, (ast.Set, ast.SetComp)) for n in nodes) or "set" in _calls(tree)
+    if what == "for_despachetare":
+        return any(isinstance(n, (ast.For, ast.comprehension)) and isinstance(n.target, ast.Tuple) for n in nodes)
+    if what == "for_imbricat":
+        return any(isinstance(n, ast.For) and any(isinstance(m, ast.For) for m in ast.walk(n) if m is not n)
+                   for n in nodes)
+    if what == "list_comprehension":
+        return any(isinstance(n, ast.ListComp) for n in nodes)
+    if what == "dict_comprehension":
+        return any(isinstance(n, ast.DictComp) for n in nodes)
+    if what == "set_comprehension":
+        return any(isinstance(n, ast.SetComp) for n in nodes)
+    if what == "lambda":
+        return any(isinstance(n, ast.Lambda) for n in nodes)
+    if what == "argument_implicit":
+        return any(f.args.defaults or any(d is not None for d in f.args.kw_defaults) for f in funcs)
+    if what == "args":
+        return any(f.args.vararg for f in funcs)
+    if what == "keyword_only":
+        return any(f.args.kwonlyargs for f in funcs)
+    if what == "global":
+        return any(isinstance(n, ast.Global) for n in nodes)
+    if what == "docstring":
+        return bool(funcs) and all(ast.get_docstring(f) for f in funcs)
+    if what == "type_hints":
+        def annotated(f):
+            a = f.args
+            params = a.posonlyargs + a.args + a.kwonlyargs + [p for p in (a.vararg, a.kwarg) if p]
+            return f.returns is not None and all(p.annotation is not None for p in params)
+        return bool(funcs) and all(annotated(f) for f in funcs)
+    if what == "default_mutabil":
+        mutable = (ast.List, ast.Dict, ast.Set)
+        return any(isinstance(d, mutable) for f in funcs for d in f.args.defaults + f.args.kw_defaults)
+    if what == "alias_tip":
+        return any(isinstance(n, (ast.Assign, ast.AnnAssign)) and isinstance(n.value, ast.Subscript)
+                   and isinstance(n.value.value, ast.Name) and n.value.value.id in ("dict", "list", "tuple", "set")
+                   for n in getattr(tree, "body", []))
     raise ValueError(f"verificare de structură necunoscută: {what}")
 
 
@@ -216,6 +291,20 @@ def observatii(source: str, fisier: str = "program.py") -> list[dict]:
 Runner = Callable[[str], tuple["int | None", str]]
 
 
+def fara_cod(source: str) -> bool:
+    """Fișierul are doar comentarii, texte între ghilimele (docstring-uri) sau `pass`: nimic de verificat.
+    O greșeală de sintaxă înseamnă că elevul a scris ceva, deci nu e „fără cod”."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return False
+    return all(
+        isinstance(s, ast.Pass) or (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant)
+                                    and isinstance(s.value.value, str))
+        for s in tree.body
+    )
+
+
 def verifica_cod(source: str, ex: dict, run: Runner, fisier: str = "program.py") -> dict:
     """Verdictul pentru codul `source` al exercițiului `ex`. `run(stdin)` rulează programul și întoarce
     (cod de ieșire sau None la timeout, output) — în aplicație e containerul elevului, la validare un subprocess."""
@@ -230,7 +319,7 @@ def verifica_cod(source: str, ex: dict, run: Runner, fisier: str = "program.py")
         v.update(etapa="sintaxa", rand=e.lineno, detaliu="Programul are o greșeală de sintaxă și nu poate porni.",
                  eroare=erori.explica(text))
         return v
-    if not source.strip() or len(tree.body) == 0:
+    if fara_cod(source):
         v.update(etapa="gol", detaliu="Fișierul nu conține încă niciun cod.")
         return v
 
@@ -263,6 +352,8 @@ def verifica_cod(source: str, ex: dict, run: Runner, fisier: str = "program.py")
                      obtinut=_scurt(out), **problema)
             if t.get("de_ce"):
                 v["de_ce"] = t["de_ce"]
+            if t.get("indiciu"):
+                v["indiciu_test"] = t["indiciu"]
             return v
 
     if grave:  # n-a crăpat la teste, dar un nume nedefinit tot e o greșeală (pe o ramură netestată)

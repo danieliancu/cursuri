@@ -39,6 +39,7 @@ print(f"Numărul {secunde} are {len(str(secunde))} cifre.")
 
 [[test]]
 nume = "nume cu spații, temperatură cu virgulă"
+indiciu = "Numele: `.strip().title()`. Temperatura: `.replace(\",\", \".\")` înainte de `float()`. Secundele: orele `s // 3600`, minutele `s % 3600 // 60`, secundele `s % 60`; cifrele cu `len(str(s))`."
 stdin = "  ana popescu \n36,6\n3725\n"
 contine = ["Ana Popescu", "97.9"]
 regex = ['\b1 or[ae],? 2 minute,? (si )?5 secunde', '\b4\b']
@@ -47,6 +48,7 @@ regex_de_ce = "3725 de secunde înseamnă 1 oră, 2 minute și 5 secunde, iar nu
 
 [[test]]
 nume = "temperatură negativă"
+indiciu = "Fahrenheit e `celsius * 9 / 5 + 32`; `float(\"-5\")` merge direct. 59 de secunde dau 0 ore și 0 minute: afișează și zerourile."
 stdin = "Ion\n-5\n59\n"
 contine = ["23.0"]
 regex = ['\b0 or[ae],? 0 minute,? (si )?59 secunde']
@@ -55,6 +57,7 @@ regex_de_ce = "59 de secunde înseamnă 0 ore, 0 minute și 59 de secunde."
 
 [[test]]
 nume = "o oră fixă"
+indiciu = "3600 de secunde: `3600 // 3600` dă 1 oră, iar minutele și secundele sunt 0; afișează-le pe toate trei, chiar dacă sunt 0."
 stdin = "Maria\n100\n3600\n"
 contine = ["212.0"]
 regex = ['\b1 or[ae],? 0 minute,? (si )?0 secunde']

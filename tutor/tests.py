@@ -196,6 +196,19 @@ NameError: name 'Print' is not defined. Did you mean: 'print'?
 class ErrorExplainTests(TestCase):
     """Erorile frecvente sunt explicate în română, fără AI, cu trimitere la lecție."""
 
+    def test_every_rule_links_to_an_existing_section(self):
+        """Linkul din balon deschide secțiunea (`### titlu`) din lecție: titlul trebuie să existe exact."""
+        lessons = Path(load_lessons.LESSONS_DIR)
+        for r in erori.REGULI:
+            if not r.lectie:
+                continue
+            files = list(lessons.glob(f"[0-9][0-9]-{r.lectie}.md"))
+            self.assertEqual(len(files), 1, r.lectie)
+            if r.sectiune:
+                headings = {ln[3:].strip() for ln in files[0].read_text(encoding="utf-8").split("\n")
+                            if ln.startswith(("## ", "### "))}
+                self.assertIn(r.sectiune, {h.lstrip("#").strip() for h in headings}, f"{r.lectie}: {r.sectiune}")
+
     def test_name_error_with_suggestion(self):
         e = erori.explica("salut\n" + TRACEBACK_NAME)
         self.assertEqual((e["tip"], e["rand"], e["sugestie"]), ("NameError", 3, "print"))
@@ -331,6 +344,31 @@ class ExerciseEndpointTests(WorkspaceTestCase):
         # verificarea rămâne în conversație, ca tutorele mare să știe ce s-a întâmplat
         self.assertEqual(ai.ui_messages(self.user, "proiect")[-1]["text"], r["mesaj"])
 
+    @mock.patch.object(ai, "formuleaza", side_effect=lambda user, project, verdict, fallback: fallback)
+    def test_first_hint_is_the_failing_tests_own(self, _):
+        """Un test nou picat → indiciul lui (treapta 1); același test din nou → indiciile generale."""
+        failing = self.ex["test"][1]  # „coș de 120 lei cu codul student”
+        workspace.write_file(self.user, "proiect", self.path, self.ex["solutie"].replace("- reducere", ""))
+        r = self.post("exercitiu/verifica", path=self.path)
+        self.assertEqual(r["verdict"]["test"], failing["nume"])
+        self.assertEqual((r["indiciu"]["treapta"], r["indiciu"]["text"]), (1, failing["indiciu"]))
+        r = self.post("exercitiu/verifica", path=self.path)
+        self.assertEqual((r["indiciu"]["treapta"], r["indiciu"]["text"]), (2, self.ex["indicii"][1]))
+        # alt test picat: iar indiciul lui, de la prima treaptă
+        workspace.write_file(self.user, "proiect", self.path, self.ex["solutie"].replace("+ transport", ""))
+        r = self.post("exercitiu/verifica", path=self.path)
+        self.assertNotEqual(r["verdict"]["test"], failing["nume"])
+        self.assertEqual(r["indiciu"]["treapta"], 1)
+
+    def test_lessons_without_tests_get_a_started_example(self):
+        """Lecțiile 23–44 n-au exercițiu fix, dar fișierul capitolului are sub enunț exemplul de început."""
+        call_command("load_lessons", "--only", "23", stdout=StringIO(), stderr=StringIO())
+        topic = Topic.objects.get(slug="traceback")
+        self.assertIsNone(chapters.exercise_path(topic))
+        text = (self.root / chapters.ensure(self.user, "proiect", topic)).read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("# ===="))
+        self.assertIn("\n# 1. Copiază programul", text)
+
     def test_file_without_exercise(self):
         self.assertFalse(self.post("exercitiu/verifica", path="main.py")["exercitiu"])
 
@@ -381,14 +419,14 @@ class ExerciseEndpointTests(WorkspaceTestCase):
         self.assertEqual((self.root / self.path).read_text(encoding="utf-8"), "print('codul meu')\n")
 
     def test_other_lessons_start_with_the_lesson_statement(self):
-        """Fără exemplu de început: enunțul din lecție e în antet; cel vechi se înlocuiește fără să atingă codul."""
-        call_command("load_lessons", "--only", "12", stdout=StringIO(), stderr=StringIO())
-        topic = Topic.objects.get(slug="liste")
+        """Fără exercițiu fix: enunțul din lecție e în antet; cel vechi se înlocuiește fără să atingă codul."""
+        call_command("load_lessons", "--only", "23", stdout=StringIO(), stderr=StringIO())
+        topic = Topic.objects.get(slug="traceback")
         path = chapters.ensure(self.user, "proiect", topic)
         text = (self.root / path).read_text(encoding="utf-8")
         self.assertTrue(text.startswith("# ===="))
-        self.assertNotIn("capitole/12-liste", text.split("\n")[5])  # „În `capitole/...`, scrie” → „Scrie”
-        workspace.write_file(self.user, "proiect", path, "# Capitolul 12: Liste\n# Scrie aici exercițiile pentru acest capitol.\n\nprint('codul meu')\n")
+        self.assertNotIn("capitole/23-traceback", text.split("\n")[5])  # „În `capitole/...`, scrie” → „Scrie”
+        workspace.write_file(self.user, "proiect", path, "# Capitolul 23: Traceback\n# Scrie aici exercițiile pentru acest capitol.\n\nprint('codul meu')\n")
         chapters.ensure(self.user, "proiect", topic)
         new = (self.root / path).read_text(encoding="utf-8")
         self.assertTrue(new.startswith("# ====") and new.rstrip().endswith("print('codul meu')"))
@@ -473,7 +511,7 @@ class LocalStepTests(WorkspaceTestCase):
         self.assertEqual(r["path"], "capitole/09-while/while_exercitii.py")
 
     def test_new_exercise_goes_to_ai_when_there_is_no_fixed_one(self):
-        self.assertTrue(self.step(tip="exercitiu", path="capitole/12-liste/liste.py")["ai"])
+        self.assertTrue(self.step(tip="exercitiu", path="capitole/23-traceback/traceback_exercitii.py")["ai"])
         TopicProgress.objects.create(user=self.user, topic=Topic.objects.get(slug="while"), status=STATUS_DONE)
         self.assertTrue(self.step(tip="exercitiu", path="capitole/09-while/while_exercitii.py")["ai"])
 
@@ -484,7 +522,7 @@ class CheckModeTests(WorkspaceTestCase):
     def test_check_gets_only_the_current_turn(self):
         calls = []
 
-        def fake_rounds(user, project, conv, since=None):
+        def fake_rounds(user, project, conv, since=None, topic=None):
             calls.append((since, ai._check_history(conv, since)))
             yield {"type": "text", "text": "Bine!"}
 
@@ -499,6 +537,52 @@ class CheckModeTests(WorkspaceTestCase):
         self.assertIn("main.py", context)
         self.assertNotIn("## Curriculum", context)
         self.assertEqual({t["name"] for t in ai.CHECK_TOOLS}, {"annotate_code", "record_progress"})
+
+    def test_file_without_code_is_answered_without_ai(self):
+        workspace.write_file(self.user, "proiect", "main.py", '# doar un comentariu\n"""și un docstring"""\n')
+        with mock.patch.object(ai, "_anthropic_rounds") as rounds, mock.patch.object(ai, "_openai_rounds") as oa:
+            events = list(ai.chat_stream(self.user, "proiect", "Verifică-mi codul.", {"open_file": "main.py"},
+                                         mode="check"))
+        rounds.assert_not_called()
+        oa.assert_not_called()
+        self.assertIn("niciun cod", events[0]["text"])
+        self.assertEqual(events[-1], {"type": "done"})
+        self.assertEqual(ai.ui_messages(self.user, "proiect")[-1]["text"], events[0]["text"])
+
+    def test_fara_cod(self):
+        self.assertTrue(verificare.fara_cod("# x\n\n"))
+        self.assertTrue(verificare.fara_cod('"""doc"""\npass\n'))
+        self.assertFalse(verificare.fara_cod("x = 1\n"))
+        self.assertFalse(verificare.fara_cod("print(\n"))  # greșeală de sintaxă: a scris ceva
+
+    def check_progress(self, args, open_file="capitole/12-liste/liste.py"):
+        topic = ai._check_topic(self.user, open_file)
+        conv, _ = ai.Conversation.objects.get_or_create(user=self.user, project="proiect")
+        events = list(ai._execute_tools(self.user, "proiect", conv, [("c1", "record_progress", args)],
+                                        check=True, topic=topic))
+        return [e for e in events if e["type"] == "progress"]
+
+    def test_check_can_only_mark_the_checked_lesson_learned(self):
+        self.assertEqual(self.check_progress({"topic": "tupluri", "status": STATUS_DONE, "comment": "x"}), [])
+        self.assertEqual(self.check_progress({"topic": "liste", "status": STATUS_DOING, "comment": "x"}), [])
+        self.assertFalse(TopicProgress.objects.filter(user=self.user).exists())
+        self.assertEqual(len(self.check_progress({"topic": "liste", "status": STATUS_DONE, "comment": "Bravo"})), 1)
+        self.assertEqual(TopicProgress.objects.get(user=self.user, topic__slug="liste").status, STATUS_DONE)
+
+    def test_check_outside_any_lesson_changes_no_progress(self):
+        self.assertEqual(self.check_progress({"topic": "liste", "status": STATUS_DONE, "comment": "x"}, "main.py"), [])
+
+    def test_progress_safety_net_in_check_mode_is_limited(self):
+        liste = Topic.objects.get(slug="liste")
+        verdict = '{"topic": "tupluri", "status": "în lucru", "comment": "x"}'
+        fake = mock.Mock()
+        fake.choices = [mock.Mock(message=mock.Mock(content=verdict))]
+        fake.model, fake.usage = "mic", mock.Mock(prompt_tokens=1, completion_tokens=1, prompt_tokens_details=None)
+        with self.settings(PYTUTOR_PROVIDER="openai"), mock.patch.object(ai.openai, "OpenAI") as client:
+            client.return_value.chat.completions.create.return_value = fake
+            events = list(ai._progress_check(self.user, "proiect", "a", "b", None, only=liste))
+        self.assertEqual(events, [])
+        self.assertFalse(TopicProgress.objects.filter(user=self.user).exists())
 
     def test_terminal_output_explains_known_error(self):
         sess = runner.get(self.user, "proiect")

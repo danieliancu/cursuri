@@ -139,9 +139,20 @@
     const panel = $("#lessonPanel");
     if (t.lesson) {
       PTMarkdown.render(panel, t.lesson, { lesson: true });
+      scrollToSection();
     } else {
       streamLesson(slug, panel);
     }
+  }
+
+  // `#slug:s-...` (ex. din balonul unei erori): lecția se deschide la secțiunea aceea, evidențiată scurt.
+  function scrollToSection() {
+    const part = decodeURIComponent(location.hash.split(":")[1] || "");
+    const target = part.startsWith("s-") && document.getElementById(part);
+    if (!target) return;
+    target.scrollIntoView({ block: "start" });
+    target.classList.add("flash");
+    setTimeout(() => target.classList.remove("flash"), 2500);
   }
 
   async function streamLesson(slug, panel) {

@@ -6,7 +6,7 @@ import anthropic
 import openai
 from django.conf import settings
 
-from . import chapters, runner, sandbox, usage, workspace
+from . import chapters, runner, sandbox, usage, verificare, workspace
 from .models import (
     STATUS_DOING,
     STATUS_DONE,
@@ -793,6 +793,16 @@ def chat_stream(user, project: str, user_text: str, ctx: dict, mode: str = "chat
     """
     check = mode == "check"
     conv, _ = Conversation.objects.get_or_create(user=user, project=project)
+    if check:
+        empty = _empty_file_reply(user, project, ctx.get("open_file"))
+        if empty:
+            ChatMessage.objects.create(conversation=conv, role="user", ui_text=user_text,
+                                       content=[{"type": "text", "text": user_text}])
+            ChatMessage.objects.create(conversation=conv, role="assistant", content=[{"type": "text", "text": empty}])
+            yield {"type": "text", "text": empty}
+            yield {"type": "done"}
+            return
+    topic = _check_topic(user, ctx.get("open_file")) if check else None
     previous = _last_tutor_text(conv) if check else ""
     user_msg = ChatMessage.objects.create(
         conversation=conv,
@@ -809,7 +819,7 @@ def chat_stream(user, project: str, user_text: str, ctx: dict, mode: str = "chat
     rounds = _openai_rounds if settings.PYTUTOR_PROVIDER == "openai" else _anthropic_rounds
     answered = False
     reply, progress_saved = "", False
-    for ev in rounds(user, project, conv, since=user_msg.id if check else None):
+    for ev in rounds(user, project, conv, since=user_msg.id if check else None, topic=topic):
         if ev["type"] == "_saved":
             answered = True
             continue
@@ -823,9 +833,23 @@ def chat_stream(user, project: str, user_text: str, ctx: dict, mode: str = "chat
         yield ev
         if ev.get("fatal"):
             return
-    if reply.strip() and not progress_saved:
-        yield from _progress_check(user, project, user_text, reply, ctx.get("open_file"))
+    if reply.strip() and not progress_saved and (topic or not check):
+        yield from _progress_check(user, project, user_text, reply, ctx.get("open_file"), only=topic)
     yield {"type": "done"}
+
+
+def _empty_file_reply(user, project: str, open_file) -> str | None:
+    """„Verifică-mi codul” pe un fișier .py fără cod (doar comentarii): răspunsul se știe, fără AI."""
+    if not isinstance(open_file, str) or not open_file.endswith(".py"):
+        return None
+    try:
+        f = workspace.read_file(user, project, open_file)
+    except workspace.WorkspaceError:
+        return None
+    if f["binary"] or not verificare.fara_cod(f["content"]):
+        return None
+    return (f"În `{f['path']}` nu e încă niciun cod: doar comentarii. Scrie programul sub ele "
+            "(sau cere-mi un exercițiu cu **Exercițiu nou**), apoi apasă **Rulează și verifică**.")
 
 
 # ---------------------------------------------------------------- Plasă de siguranță pentru progres
@@ -839,10 +863,12 @@ Alege subiectul al cărui conținut acoperă conceptul exersat. Răspunde DOAR c
 {"topic": "<slug sau null>", "status": "în lucru" | "învățat" | null, "comment": "<1-2 propoziții către elev, în română>"}"""
 
 
-def _progress_check(user, project: str, user_text: str, reply: str, open_file) -> Iterator[dict]:
+def _progress_check(user, project: str, user_text: str, reply: str, open_file,
+                    only: Topic | None = None) -> Iterator[dict]:
     """Tutorele n-a apelat `record_progress`: un model mic decide dacă s-a început/terminat un subiect.
 
     Fără asta, bifele din sumarul elevului ar depinde de cât de ascultător e modelul principal.
+    `only` (la „Rulează și verifică”): se poate doar bifa „învățat” lecția la care lucrează elevul.
     """
     active = (
         TopicProgress.objects.filter(user=user, status=STATUS_DOING)
@@ -894,7 +920,7 @@ def _progress_check(user, project: str, user_text: str, reply: str, open_file) -
     if not isinstance(slug, str) or status not in (STATUS_DOING, STATUS_DONE):
         return
     topic = Topic.objects.filter(slug=slug.strip().strip("`")).first()
-    if not topic:
+    if not topic or (only and (topic != only or status != STATUS_DONE)):
         return
     current = TopicProgress.objects.filter(user=user, topic=topic).values_list("status", flat=True).first()
     if current == status or current == STATUS_DONE:
@@ -921,7 +947,7 @@ Spune dacă programul face ce cere sarcina:
 - Corect: felicită-l în 1–2 propoziții, eventual o observație scurtă de stil; șterge baloanele vechi (`annotate_code` cu `notes` gol) și apelează `record_progress` cu „învățat” pe subiectul indicat, cu `path` = fișierul.
 - Greșit sau incomplet: pune baloane (`annotate_code`) pe liniile cu probleme — ce e greșit și un indiciu, NU soluția completă. În panou doar 1–2 propoziții care trimit la baloane, iar ultima propoziție e pasul concret: „…apoi apasă **Rulează și verifică**.”
 - Programul a crăpat: explică eroarea pe scurt, în balon pe linia ei.
-Nu da exerciții noi și nu schimba subiectul. Nu scrie codul în locul lui. Răspuns scurt."""
+Nu da exerciții noi și nu schimba subiectul: `record_progress` merge doar cu „învățat”, doar pe subiectul indicat. Nu scrie codul în locul lui. Răspuns scurt."""
 
 CHECK_TOOL_NAMES = ("annotate_code", "record_progress")
 CHECK_TOOLS = [t for t in TOOLS if t["name"] in CHECK_TOOL_NAMES]
@@ -948,14 +974,36 @@ def _last_tutor_text(conv: Conversation) -> str:
     return "\n\n".join(t for t in texts if t).strip()
 
 
+def _check_topic(user, open_file) -> Topic | None:
+    """Lecția la care lucrează elevul când apasă „Rulează și verifică”: a fișierului capitolului deschis,
+    altfel lecția curentă (ultima deschisă), altfel ultima „în lucru”."""
+    topic = chapters.topic_for_path(open_file) if isinstance(open_file, str) else None
+    if topic:
+        return topic
+    p = StudentProfile.objects.filter(user=user).select_related("current_topic").first()
+    if p and p.current_topic:
+        return p.current_topic
+    tp = (TopicProgress.objects.filter(user=user, status=STATUS_DOING)
+          .select_related("topic").order_by("-updated_at").first())
+    return tp.topic if tp else None
+
+
+def _check_progress(user, project: str, args, events: list, topic: Topic | None) -> tuple[str, bool]:
+    """`record_progress` la verificarea de rutină: modelul mic poate doar bifa „învățat” lecția verificată,
+    nu poate începe sau schimba alte lecții."""
+    if not topic:
+        return _err("verificarea nu ține de nicio lecție: progresul nu se schimbă"), True
+    if not isinstance(args, dict) or args.get("status") != STATUS_DONE:
+        return _err("la verificare poți marca doar „învățat”"), True
+    if str(args.get("topic", "")).strip("`") != topic.slug:
+        return _err(f"la verificare poți marca doar lecția verificată, `{topic.slug}`"), True
+    return _record_progress(user, project, args, events)
+
+
 def _check_context(user, project: str, ctx: dict, previous: str) -> str:
     parts = [f"Elev: {user.get_username()}"]
     open_file = ctx.get("open_file")
-    topic = chapters.topic_for_path(open_file) if isinstance(open_file, str) else None
-    if not topic:
-        tp = (TopicProgress.objects.filter(user=user, status=STATUS_DOING)
-              .select_related("topic").order_by("-updated_at").first())
-        topic = tp.topic if tp else None
+    topic = _check_topic(user, open_file)
     if topic:
         parts.append(f"Subiectul: `{topic.slug}` ({topic.title}).")
         # Unde exercițiul lecției are fișierul lui (exercitiu.py, verificat de cod), aici e altă sarcină:
@@ -1017,14 +1065,19 @@ def _fatal(message: str) -> dict:
     return {"type": "error", "message": message, "fatal": True}
 
 
-def _execute_tools(user, project: str, conv: Conversation, calls: list[tuple[str, str, object]]) -> Iterator[dict]:
-    """Rulează uneltele cerute de model și salvează rezultatele ca mesaj tool_result."""
+def _execute_tools(user, project: str, conv: Conversation, calls: list[tuple[str, str, object]],
+                   check: bool = False, topic: Topic | None = None) -> Iterator[dict]:
+    """Rulează uneltele cerute de model și salvează rezultatele ca mesaj tool_result.
+    `check` = verificarea de rutină: progresul se poate schimba doar pe `topic` (vezi `_check_progress`)."""
     results = []
     for call_id, name, args in calls:
         events: list = []
         if not _clears_nothing(user, project, name, args):
             yield {"type": "tool", **_tool_entry(name, args)}
-        result, is_error = _run_tool(user, project, name, args, events)
+        if check and name == "record_progress":
+            result, is_error = _check_progress(user, project, args, events, topic)
+        else:
+            result, is_error = _run_tool(user, project, name, args, events)
         yield from events
         results.append({"type": "tool_result", "tool_use_id": call_id, "content": result, "is_error": is_error})
     ChatMessage.objects.create(conversation=conv, role="user", content=results, is_tool_result=True)
@@ -1038,8 +1091,10 @@ def _check_history(conv: Conversation, since: int) -> list[ChatMessage]:
     return list(conv.messages.filter(id__gte=since))
 
 
-def _anthropic_rounds(user, project: str, conv: Conversation, since: int | None = None) -> Iterator[dict]:
-    """`since` = id-ul mesajului de la care începe o verificare de rutină (model mic, context redus)."""
+def _anthropic_rounds(user, project: str, conv: Conversation, since: int | None = None,
+                      topic: Topic | None = None) -> Iterator[dict]:
+    """`since` = id-ul mesajului de la care începe o verificare de rutină (model mic, context redus);
+    `topic` = lecția verificată, singura pe care modelul mic o poate bifa."""
     client = anthropic.Anthropic()
     if since is None:
         system = [{"type": "text", "text": system_text(), "cache_control": {"type": "ephemeral"}}]
@@ -1117,7 +1172,8 @@ def _anthropic_rounds(user, project: str, conv: Conversation, since: int | None 
         if response.stop_reason == "max_tokens":
             yield {"type": "error", "message": "Răspunsul a fost tăiat (prea lung)."}
             return
-        yield from _execute_tools(user, project, conv, [(b.id, b.name, b.input) for b in tool_uses])
+        yield from _execute_tools(user, project, conv, [(b.id, b.name, b.input) for b in tool_uses],
+                                  check=since is not None, topic=topic)
 
 
 # ---------------------------------------------------------------- OpenAI
@@ -1184,7 +1240,8 @@ def _cache_retention() -> dict:
     return {"prompt_cache_retention": "24h"} if _RETENTION["ok"] else {}
 
 
-def _openai_rounds(user, project: str, conv: Conversation, since: int | None = None) -> Iterator[dict]:
+def _openai_rounds(user, project: str, conv: Conversation, since: int | None = None,
+                   topic: Topic | None = None) -> Iterator[dict]:
     try:
         client = openai.OpenAI()
     except openai.OpenAIError as e:
@@ -1289,7 +1346,7 @@ def _openai_rounds(user, project: str, conv: Conversation, since: int | None = N
             return
         if not parsed:
             return
-        yield from _execute_tools(user, project, conv, parsed)
+        yield from _execute_tools(user, project, conv, parsed, check=check, topic=topic)
 
 
 # ---------------------------------------------------------------- Lecții (scrise de AI, salvate în baza de date)

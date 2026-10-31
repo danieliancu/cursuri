@@ -25,7 +25,7 @@ _FILE_RE = re.compile(r"Fișier deschis în editor: capitole/(\d{2})-")
 _RUN_RE = re.compile(r"Finalul output-ului:\n```\n(.*?)\n```", re.S)
 
 CATEGORIES = [
-    ("check_ex", "Verificare, exercițiu fix (lecțiile 1–11)"),
+    ("check_ex", "Verificare, exercițiu fix (lecțiile 1–22)"),
     ("check_err", "Verificare, eroare cunoscută"),
     ("check", "Verificare, alt cod"),
     ("explain", "„Explică eroarea” / traceback lipit în chat (socotit neschimbat)"),

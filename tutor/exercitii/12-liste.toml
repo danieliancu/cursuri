@@ -1,0 +1,82 @@
+titlu = "Catalogul clasei"
+enunt = "Catalogul clasei: elevi cu trei note validate (1–10), tabelul cu medii, elevii cu media sub 5 și numele sortate."
+structura = ["lista", "while", "for", "apel:append", "apel:sorted"]
+indicii = [
+    "Catalogul e o listă de liste: `catalog.append([nume, nota1, nota2, nota3])`. Citești nume până primești un rând gol: `while nume != \"\":`, cu un nou `input()` la finalul buclei.",
+    "O notă validă e un număr întreg între 1 și 10: ceri din nou cât timp `not (text.isdigit() and 1 <= int(text) <= 10)`. Media unui elev: `sum(elev[1:]) / 3`.",
+    "Tabelul: `for elev in catalog:` cu `f\"{elev[0]:<10}{elev[1]:>4}{elev[2]:>4}{elev[3]:>4}{media:>8.2f}\"`. Elevii cu media sub 5 îi pui într-o listă nouă. `sorted(nume_elevi)` întoarce o listă nouă și lasă catalogul neschimbat; `sort()` l-ar schimba.",
+]
+inceput = '''
+# 1. Catalogul pornește gol; numele se citesc până la un rând gol (exemplu: așa se scrie bucla)
+catalog = []
+nume = input("Numele elevului (gol = gata): ").strip()
+while nume != "":
+    # 2. Cele trei note, fiecare cerută din nou până e un număr întreg între 1 și 10
+    #    scrii așa: text = input("Nota 1: ").strip()
+    #               while not (text.isdigit() and 1 <= int(text) <= 10):
+    #                   text = input("Nota trebuie să fie între 1 și 10: ").strip()
+    #    apoi:      catalog.append([nume, nota1, nota2, nota3])
+
+    nume = input("Numele elevului (gol = gata): ").strip()
+
+# 3. Tabelul: numele, cele trei note și media (2 zecimale), pe coloane aliniate
+#    scrii așa: for elev in catalog:
+#                   media = sum(elev[1:]) / 3
+
+
+# 4. Elevii cu media sub 5, sau „Toți elevii au promovat”
+#    scrii așa: corigenti = []
+
+
+# 5. Numele sortate alfabetic, fără să schimbi ordinea din catalog
+#    scrii așa: print(sorted(nume_elevi))
+'''
+solutie = '''
+catalog = []
+nume = input("Numele elevului (gol = gata): ").strip()
+while nume != "":
+    note = []
+    for i in range(1, 4):
+        text = input(f"Nota {i}: ").strip()
+        while not (text.isdigit() and 1 <= int(text) <= 10):
+            text = input("Nota trebuie să fie un număr întreg între 1 și 10: ").strip()
+        note.append(int(text))
+    catalog.append([nume, note[0], note[1], note[2]])
+    nume = input("Numele elevului (gol = gata): ").strip()
+
+print(f"{'Nume':<10}{'N1':>4}{'N2':>4}{'N3':>4}{'Media':>8}")
+corigenti = []
+for elev in catalog:
+    media = sum(elev[1:]) / 3
+    print(f"{elev[0]:<10}{elev[1]:>4}{elev[2]:>4}{elev[3]:>4}{media:>8.2f}")
+    if media < 5:
+        corigenti.append(elev[0])
+
+if corigenti:
+    print("Media sub 5:", ", ".join(corigenti))
+else:
+    print("Toți elevii au promovat")
+
+nume_elevi = []
+for elev in catalog:
+    nume_elevi.append(elev[0])
+print("Sortați alfabetic:", ", ".join(sorted(nume_elevi)))
+'''
+
+[[test]]
+nume = "trei elevi, cu note invalide pe drum"
+indiciu = "Notele `11` și `x` nu sunt valide: ceri din nou nota, fără s-o adaugi. Media lui Mihai (4, 5, 3) e 4.00, deci apare la „media sub 5”; la final, numele sortate sunt Bianca, Mihai, Zoe."
+stdin = "Zoe\n10\n9\n8\nBianca\n7\n11\n6\n8\nMihai\n4\n5\nx\n3\n\n"
+contine = ["9.00", "7.00", "4.00"]
+nu_contine = ["toti elevii au promovat"]
+regex = ['\bmihai\b[\s\S]*\bbianca\b[\s\S]*\bmihai\b[\s\S]*\bzoe\b']
+regex_text = "numele sortate alfabetic (Bianca, Mihai, Zoe), după tabel"
+regex_de_ce = "După tabel (Zoe, Bianca, Mihai, în ordinea din catalog) trebuie să apară numele sortate: Bianca, Mihai, Zoe."
+de_ce = "Zoe are media 9.00, Bianca (7, 6, 8) 7.00, iar Mihai (4, 5, 3) 4.00. Notele 11 și x se cer din nou."
+
+[[test]]
+nume = "un singur elev, promovat"
+indiciu = "Când lista elevilor cu media sub 5 e goală (`if corigenti:` e fals), afișezi „Toți elevii au promovat”."
+stdin = "Ion\n5\n5\n6\n\n"
+contine = ["5.33", "toti elevii au promovat"]
+de_ce = "Ion are media 5.33, deci nimeni nu are media sub 5: programul afișează „Toți elevii au promovat”."

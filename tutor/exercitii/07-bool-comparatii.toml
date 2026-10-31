@@ -45,22 +45,26 @@ print("Salut,", salut or nume)
 
 [[test]]
 nume = "parolă bună"
+indiciu = "Pentru o parolă care respectă toate regulile, fiecare verificare trebuie să dea `True`. Afișează rezultatul exact așa: `print(\"Parolă puternică:\", ...)`."
 stdin = "ana\nParolaMea2026\n\n"
 contine = ["Parolă puternică: True"]
 nu_contine = ["Parolă puternică: False"]
 
 [[test]]
 nume = "parola conține numele"
+indiciu = "Compară fără să ții cont de literele mari: `nume.lower() not in parola.lower()`. „BananaSplit99” conține „ana”."
 stdin = "ana\nBananaSplit99\n\n"
 contine = ["Parolă puternică: False"]
 de_ce = "„BananaSplit99” conține „ana” (indiferent de literele mari), deci nu e puternică."
 
 [[test]]
 nume = "parolă scurtă"
+indiciu = "Lungimea minimă: `len(parola) >= 10`. „Scurta1” are doar 7 caractere."
 stdin = "ion\nScurta1\n\n"
 contine = ["Parolă puternică: False"]
 
 [[test]]
 nume = "parolă interzisă"
+indiciu = "Pe lângă lungime și litere, parola nu trebuie să fie una dintre cele interzise: `parola != \"parola123\" and parola != \"qwerty1234\"`."
 stdin = "maria\nqwerty1234\nMaria\n"
 contine = ["Parolă puternică: False"]

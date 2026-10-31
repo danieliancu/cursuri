@@ -51,6 +51,7 @@ print(f"{'Media generală':<30}{generala:>11.2f}")
 
 [[test]]
 nume = "tabelul afișat"
+indiciu = "Fiecare medie se afișează cu `.2f` și e ultimul lucru de pe rând, de exemplu `{medie1:>11.2f}` la finalul f-string-ului."
 contine = ["Andrei"]
 regex = ['\d+\.\d\d\s*$(.|\n)*\d+\.\d\d\s*$(.|\n)*\d+\.\d\d\s*$']
 regex_text = "mediile cu 2 zecimale, la final de rând"

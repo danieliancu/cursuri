@@ -141,6 +141,8 @@ class ExerciseAttempt(models.Model):
     last_code = models.TextField("ultimul cod verificat", blank=True, default="")
     # „Nu lucrez la exercițiul lecției”: fișierul capitolului e verificat de tutore (sarcina lui), nu de teste
     skipped = models.BooleanField("lucrează la altceva", default=False)
+    # testul care a picat ultima dată: la un test nou, primul indiciu e cel al testului (`indiciu` în TOML)
+    last_test = models.CharField("ultimul test picat", max_length=200, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

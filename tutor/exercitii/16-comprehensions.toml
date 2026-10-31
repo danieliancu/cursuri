@@ -1,0 +1,72 @@
+titlu = "Raftul magazinului"
+enunt = "Cinci rezultate din lista de produse, fiecare într-un singur comprehension, plus unul rescris ca buclă for."
+structura = ["list_comprehension", "dict_comprehension", "set_comprehension", "for"]
+indicii = [
+    "Fiecare tuplu se despachetează direct în comprehension: `[nume for nume, pret, stoc in produse if stoc > 0]`. Dicționarul: `{nume: pret for nume, pret, stoc in produse if pret > 5}`.",
+    "Valoarea stocului: `{nume: round(pret * stoc, 2) for nume, pret, stoc in produse}`. Setul primelor litere: `{nume[0] for nume, pret, stoc in produse}`.",
+    "Eticheta are `if ... else` în față: `f\"{nume.upper()} — {pret:.2f} lei\" + (\" (stoc epuizat)\" if stoc == 0 else \"\")`. Rescrierea: o listă goală, `for` și `append`, apoi `print(lista_for == lista_comprehension)`.",
+]
+inceput = '''
+produse = [
+    ("pâine", 4.5, 20), ("lapte", 8.99, 0), ("cafea", 32.0, 3),
+    ("mere", 6.49, 50), ("ceai", 14.0, 0), ("ouă", 1.2, 120),
+]
+
+# 1. Numele produselor aflate în stoc (exemplu: așa se scrie un comprehension cu condiție)
+in_stoc = [nume for nume, pret, stoc in produse if stoc > 0]
+print("În stoc:", in_stoc)
+
+# 2. Dicționarul nume -> preț pentru produsele mai scumpe de 5 lei
+#    scrii așa: {nume: pret for nume, pret, stoc in produse if ...}
+
+
+# 3. Dicționarul nume -> valoarea stocului (preț × stoc), rotunjită la 2 zecimale
+
+
+# 4. Etichetele de raft: "PÂINE — 4.50 lei", cu " (stoc epuizat)" la stocul 0 (if ... else în față)
+
+
+# 5. Setul primelor litere
+
+
+# 6. Unul dintre ele rescris cu o buclă for, și comparat cu varianta comprehension
+#    scrii așa: print(lista_for == in_stoc)
+'''
+solutie = '''
+produse = [
+    ("pâine", 4.5, 20), ("lapte", 8.99, 0), ("cafea", 32.0, 3),
+    ("mere", 6.49, 50), ("ceai", 14.0, 0), ("ouă", 1.2, 120),
+]
+
+in_stoc = [nume for nume, pret, stoc in produse if stoc > 0]
+print("În stoc:", in_stoc)
+
+scumpe = {nume: pret for nume, pret, stoc in produse if pret > 5}
+print("Peste 5 lei:", scumpe)
+
+valori = {nume: round(pret * stoc, 2) for nume, pret, stoc in produse}
+print("Valoarea stocului:", valori)
+
+etichete = [f"{nume.upper()} — {pret:.2f} lei" + (" (stoc epuizat)" if stoc == 0 else "")
+            for nume, pret, stoc in produse]
+for eticheta in etichete:
+    print(eticheta)
+
+litere = {nume[0] for nume, pret, stoc in produse}
+print("Primele litere:", sorted(litere))
+
+lista_for = []
+for nume, pret, stoc in produse:
+    if stoc > 0:
+        lista_for.append(nume)
+print("La fel cu for:", lista_for == in_stoc)
+'''
+
+[[test]]
+nume = "rezultatele afișate"
+indiciu = "Eticheta e numele cu litere mari, o liniuță lungă „—”, prețul cu 2 zecimale și „lei”: `f\"{nume.upper()} — {pret:.2f} lei\"`; la stocul 0 se adaugă „ (stoc epuizat)”. Valoarea stocului la mere e `round(6.49 * 50, 2)`, adică 324.5."
+contine = ["324.5"]
+regex = ['\bpaine — 4\.50 lei\b', '\blapte — 8\.99 lei \(stoc epuizat\)', '\bceai — 14\.00 lei \(stoc epuizat\)']
+regex_text = "etichetele de raft, de exemplu „PÂINE — 4.50 lei” și „LAPTE — 8.99 lei (stoc epuizat)”"
+regex_de_ce = "Etichetele au forma „NUME — preț cu 2 zecimale lei”, iar produsele cu stoc 0 (lapte, ceai) au „(stoc epuizat)” la final."
+de_ce = "Valoarea stocului la mere e 6.49 × 50 = 324.5, iar etichetele au forma din enunț."

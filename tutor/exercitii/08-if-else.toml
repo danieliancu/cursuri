@@ -54,18 +54,21 @@ else:
 
 [[test]]
 nume = "valoare care nu e număr"
+indiciu = "Verifică textul înainte de `float()`: dacă `text.replace(\".\", \"\", 1).isdigit()` e fals, afișezi mesajul, iar tot calculul rămâne pe ramura `else`, deci nu se afișează „Total”."
 stdin = "abc\n"
 nu_contine = ["total"]
 de_ce = "Când valoarea nu e un număr, programul afișează un mesaj și nu mai calculează nimic (nici totalul)."
 
 [[test]]
 nume = "coș de 120 lei cu codul student"
+indiciu = "Compară codul după `.upper()`: `student` devine `STUDENT`. Reducerea e `cos * 0.10` (12.00), iar transportul e 0 de la 100 de lei în sus."
 stdin = "120\nstudent\n"
 contine = ["12.00", "108.00"]
 de_ce = "STUDENT dă 10% reducere (12.00 lei), transportul e gratuit de la 100 lei, deci totalul e 108.00."
 
 [[test]]
 nume = "coș de 80 lei, fără cod"
+indiciu = "Sub 100 de lei transportul e 15. Un cod gol (`\"\"`) nu e „necunoscut”: pune `elif cod != \"\":` înainte de mesajul „Cod necunoscut”."
 stdin = "80\n\n"
 contine = ["15.00", "95.00"]
 nu_contine = ["cod necunoscut"]
@@ -73,12 +76,14 @@ de_ce = "Sub 100 lei transportul e 15 lei, deci totalul e 95.00. Un cod gol nu a
 
 [[test]]
 nume = "coș de 150 lei cu VaRa2026"
+indiciu = "`VaRa2026` devine `VARA2026` cu `.upper()`. De la 150 de lei în sus reducerea e 20 de lei; condiția e `cos >= 150`."
 stdin = "150\nVaRa2026\n"
 contine = ["20.00", "130.00"]
 de_ce = "Codul se acceptă cu orice litere mari și mici; VARA2026 dă 20 lei reducere de la 150 lei în sus."
 
 [[test]]
 nume = "coș de 99,5 lei cu un cod greșit"
+indiciu = "Înlocuiește virgula cu punct înainte de verificare și de `float()`: `.replace(\",\", \".\")`. Un cod care nu e gol și nu e cunoscut afișează „Cod necunoscut”."
 stdin = "99,5\nxyz\n"
 contine = ["cod necunoscut", "114.50"]
 de_ce = "Valoarea poate avea virgulă; un cod necunoscut afișează „Cod necunoscut”, iar totalul e 99.50 + 15 transport."

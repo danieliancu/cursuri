@@ -1,0 +1,80 @@
+titlu = "Catalogul clasei, cu argumente"
+enunt = "Funcțiile media(*note, zecimale=2), adauga_elev(nume, *note, catalog=None) și afiseaza_catalog(catalog, *, sortat_dupa=\"nume\", prag_trecere=5); catalogul afișat întâi după nume, apoi după medie."
+structura = ["args", "keyword_only", "argument_implicit", "return", "apel:media", "apel:adauga_elev", "apel:afiseaza_catalog"]
+interzis = ["default_mutabil"]
+indicii = [
+    "`def media(*note, zecimale=2):` — `note` e un tuplu; dacă e gol (`if not note:`) întorci `None`, altfel `round(sum(note) / len(note), zecimale)`.",
+    "`def adauga_elev(nume, *note, catalog=None):` — capcana e `catalog={}` ca valoare implicită (același dicționar la fiecare apel). Scrie `if catalog is None: catalog = {}`, apoi `catalog[nume] = list(note)` și `return catalog`.",
+    "În `afiseaza_catalog`, după medie sortezi tupluri `(medie, nume)` cu `reverse=True`; după nume, `sorted(catalog)`. Marchează cu `*` elevii cu media sub `prag_trecere`. Apelează-l întâi cu `sortat_dupa=\"nume\"`, apoi cu `sortat_dupa=\"medie\"`.",
+]
+inceput = '''
+# 1. media(*note, zecimale=2): media rotunjită, sau None fără nicio notă (exemplu: așa se scrie)
+def media(*note, zecimale=2):
+    if not note:
+        return None
+    return round(sum(note) / len(note), zecimale)
+
+
+# 2. adauga_elev(nume, *note, catalog=None): adaugă elevul și întoarce catalogul (atenție la capcana din lecție)
+#    scrii așa: if catalog is None:
+#                   catalog = {}
+
+
+# 3. afiseaza_catalog(catalog, *, sortat_dupa="nume", prag_trecere=5): tabel, cu * la media sub prag
+
+
+# 4. Catalogul cu acești 4 elevi (primul apel fără catalog, celelalte cu catalog=),
+#    afișat întâi după nume, apoi după medie:
+#    Ana 9, 10, 8   Bogdan 4, 5, 3   Carmen 7, 8   Dan 10, 9, 9, 10
+#    scrii așa: catalog = adauga_elev("Ana", 9, 10, 8)
+#               catalog = adauga_elev("Bogdan", 4, 5, 3, catalog=catalog)
+
+
+# 5. Despachetarea la apel
+#    scrii așa: print(media(*catalog["Ana"]))
+'''
+solutie = '''
+def media(*note, zecimale=2):
+    if not note:
+        return None
+    return round(sum(note) / len(note), zecimale)
+
+
+def adauga_elev(nume, *note, catalog=None):
+    if catalog is None:
+        catalog = {}
+    catalog[nume] = list(note)
+    return catalog
+
+
+def afiseaza_catalog(catalog, *, sortat_dupa="nume", prag_trecere=5):
+    if sortat_dupa == "medie":
+        ordine = [nume for m, nume in sorted([(media(*note), nume) for nume, note in catalog.items()], reverse=True)]
+    else:
+        ordine = sorted(catalog)
+    print(f"Catalogul, după {sortat_dupa}:")
+    for nume in ordine:
+        m = media(*catalog[nume])
+        semn = "*" if m < prag_trecere else ""
+        note = ", ".join(str(n) for n in catalog[nume])
+        print(f"  {nume:<8} {note:<15} {m:>5}{semn}")
+
+
+catalog = adauga_elev("Ana", 9, 10, 8)
+catalog = adauga_elev("Bogdan", 4, 5, 3, catalog=catalog)
+catalog = adauga_elev("Carmen", 7, 8, catalog=catalog)
+catalog = adauga_elev("Dan", 10, 9, 9, 10, catalog=catalog)
+afiseaza_catalog(catalog, sortat_dupa="nume")
+afiseaza_catalog(catalog, sortat_dupa="medie")
+print("Media Anei:", media(*catalog["Ana"]))
+print("Fără note:", media())
+'''
+
+[[test]]
+nume = "catalogul afișat în ambele ordini"
+indiciu = "Mediile sunt Ana 9.0, Bogdan 4.0, Carmen 7.5, Dan 9.5. Afișează întâi după nume (Ana, Bogdan, Carmen, Dan), apoi după medie, descrescător (Dan, Ana, Carmen, Bogdan), cu `*` la Bogdan."
+contine = ["9.5", "7.5"]
+regex = ['\bana\b[\s\S]*\bbogdan\b[\s\S]*\bcarmen\b[\s\S]*\bdan\b[\s\S]*\bana\b[\s\S]*\bcarmen\b[\s\S]*\bbogdan\b', '\bbogdan\b[^\n]*\*']
+regex_text = "catalogul după nume (Ana, Bogdan, Carmen, Dan), apoi după medie (Dan, Ana, Carmen, Bogdan), cu `*` la Bogdan"
+regex_de_ce = "Întâi după nume, apoi după medie, descrescător: Dan (9.5), Ana (9.0), Carmen (7.5), Bogdan (4.0). Bogdan are media sub 5, deci e marcat cu `*` pe rândul lui."
+de_ce = "Testul folosește cei 4 elevi din exemplul de început: Ana 9, 10, 8; Bogdan 4, 5, 3; Carmen 7, 8; Dan 10, 9, 9, 10."

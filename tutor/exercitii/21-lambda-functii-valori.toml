@@ -1,0 +1,82 @@
+titlu = "Produsele, sortate și filtrate"
+enunt = "Lista de produse sortată cu lambda (preț, stoc, categorie + nume), produsul cu cea mai mare valoare a stocului, filtreaza(produse, conditie) și criteriul de sortare ales de utilizator."
+structura = ["lambda", "def", "dict", "apel:sorted", "apel:max", "apel:filtreaza", "input"]
+indicii = [
+    "Sortările: `sorted(produse, key=lambda p: p[\"pret\"])`, `sorted(produse, key=lambda p: p[\"stoc\"], reverse=True)`, iar categoria + numele cu o cheie tuplu: `key=lambda p: (p[\"categorie\"], p[\"nume\"])`.",
+    "`max(produse, key=lambda p: p[\"pret\"] * p[\"stoc\"])` dă ceaiul (168 de lei). `def filtreaza(produse, conditie): return [p for p in produse if conditie(p)]`, apelată de exemplu cu `lambda p: p[\"stoc\"] > 0`.",
+    "`CRITERII = {\"pret\": lambda p: p[\"pret\"], \"nume\": lambda p: p[\"nume\"], \"stoc\": lambda p: p[\"stoc\"]}`. Citești criteriul cu `input()` și sortezi cu `key=CRITERII[criteriu]`; afișezi apoi produsele, câte unul pe rând, în ordinea asta.",
+]
+inceput = '''
+produse = [
+    {"nume": "pâine", "pret": 4.5, "stoc": 20, "categorie": "panificație"},
+    {"nume": "cafea", "pret": 32.0, "stoc": 3, "categorie": "băuturi"},
+    {"nume": "lapte", "pret": 8.99, "stoc": 0, "categorie": "lactate"},
+    {"nume": "ceai", "pret": 14.0, "stoc": 12, "categorie": "băuturi"},
+    {"nume": "iaurt", "pret": 3.49, "stoc": 30, "categorie": "lactate"},
+]
+
+# 1. Sortate după preț (exemplu: așa se scrie o cheie cu lambda), apoi descrescător după stoc
+for p in sorted(produse, key=lambda p: p["pret"]):
+    print(f"{p['nume']:<8} {p['pret']:>6.2f} lei")
+#    scrii așa: sorted(produse, key=lambda p: p["stoc"], reverse=True)
+
+
+# 2. După categorie, iar în cadrul categoriei după nume (cheie tuplu)
+
+
+# 3. Produsul cu cea mai mare valoare a stocului (preț × stoc), cu max și key=
+
+
+# 4. filtreaza(produse, conditie), apelată cu cel puțin trei condiții lambda
+#    scrii așa: def filtreaza(produse, conditie):
+
+
+# 5. CRITERII = {"pret": ..., "nume": ..., "stoc": ...} și criteriul ales de la tastatură
+#    scrii așa: criteriu = input("Sortez după (pret / nume / stoc): ").strip()
+'''
+solutie = '''
+produse = [
+    {"nume": "pâine", "pret": 4.5, "stoc": 20, "categorie": "panificație"},
+    {"nume": "cafea", "pret": 32.0, "stoc": 3, "categorie": "băuturi"},
+    {"nume": "lapte", "pret": 8.99, "stoc": 0, "categorie": "lactate"},
+    {"nume": "ceai", "pret": 14.0, "stoc": 12, "categorie": "băuturi"},
+    {"nume": "iaurt", "pret": 3.49, "stoc": 30, "categorie": "lactate"},
+]
+
+
+def afiseaza(titlu, lista):
+    print(titlu + ":", ", ".join(p["nume"] for p in lista))
+
+
+def filtreaza(produse, conditie):
+    return [p for p in produse if conditie(p)]
+
+
+afiseaza("După preț", sorted(produse, key=lambda p: p["pret"]))
+afiseaza("După stoc, descrescător", sorted(produse, key=lambda p: p["stoc"], reverse=True))
+afiseaza("După categorie și nume", sorted(produse, key=lambda p: (p["categorie"], p["nume"])))
+
+cel_mai_valoros = max(produse, key=lambda p: p["pret"] * p["stoc"])
+print(f"Cea mai mare valoare a stocului: {cel_mai_valoros['nume']}")
+
+afiseaza("În stoc", filtreaza(produse, lambda p: p["stoc"] > 0))
+afiseaza("Sub 10 lei", filtreaza(produse, lambda p: p["pret"] < 10))
+afiseaza("Băuturi", filtreaza(produse, lambda p: p["categorie"] == "băuturi"))
+
+CRITERII = {"pret": lambda p: p["pret"], "nume": lambda p: p["nume"], "stoc": lambda p: p["stoc"]}
+criteriu = input("Sortez după (pret / nume / stoc): ").strip()
+while criteriu not in CRITERII:
+    criteriu = input("Alege pret, nume sau stoc: ").strip()
+for p in sorted(produse, key=CRITERII[criteriu]):
+    print(f"  {p['nume']}")
+'''
+
+[[test]]
+nume = "criteriul „stoc” ales de utilizator"
+indiciu = "Citește criteriul cu `input()` și sortează cu `key=CRITERII[criteriu]`, crescător. După stoc ordinea e lapte (0), cafea (3), ceai (12), pâine (20), iaurt (30); afișeaz-o la final, câte un produs pe rând sau pe un singur rând."
+stdin = "stoc\n"
+contine = ["ceai"]
+regex = ['\blapte\b[^\n]*(\n[^\n]*)?\bcafea\b[^\n]*(\n[^\n]*)?\bceai\b[^\n]*(\n[^\n]*)?\bpaine\b[^\n]*(\n[^\n]*)?\biaurt\b']
+regex_text = "produsele sortate după stoc, la final: lapte, cafea, ceai, pâine, iaurt"
+regex_de_ce = "Cu criteriul „stoc”, produsele se afișează crescător după stoc: lapte (0), cafea (3), ceai (12), pâine (20), iaurt (30)."
+de_ce = "Utilizatorul alege „stoc”: sortarea folosește funcția-cheie din CRITERII."

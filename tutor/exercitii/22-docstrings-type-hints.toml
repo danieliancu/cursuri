@@ -1,0 +1,71 @@
+titlu = "Funcții documentate"
+enunt = "Funcțiile de la lecția 19 (sau 18), cu docstring, type hints la toți parametrii și la rezultat, un alias de tip și help() pentru două dintre ele."
+structura = ["def", "docstring", "type_hints", "alias_tip", "apel:help"]
+indicii = [
+    "Fiecare funcție începe cu un docstring: `\"\"\"Media notelor, rotunjită; None dacă nu e nicio notă.\"\"\"`, pe primul rând din corpul ei.",
+    "Type hints la toți parametrii, inclusiv `*note: float` și cei după `*`, plus rezultatul: `-> float | None`, `-> Catalog`, iar `-> None` la funcțiile care doar afișează.",
+    "Aliasul se scrie la începutul fișierului: `Catalog = dict[str, list[float]]`. La final: `help(media)` și `help(adauga_elev)`; output-ul începe cu „Help on function ...”.",
+]
+inceput = '''
+# 1. Aliasul de tip pentru catalog
+#    scrii așa: Catalog = dict[str, list[float]]
+
+
+# 2. Funcțiile de la lecția 19 (sau 18), fiecare cu docstring și type hints
+#    (exemplu: așa arată prima, documentată)
+def media(*note: float, zecimale: int = 2) -> float | None:
+    """Media notelor, rotunjită la `zecimale`; None dacă nu e nicio notă."""
+    if not note:
+        return None
+    return round(sum(note) / len(note), zecimale)
+
+
+# 3. help() pentru două dintre funcții
+#    scrii așa: help(media)
+
+
+# 4. Un loc unde tipul și comportamentul nu se potrivesc, explicat într-un comentariu
+'''
+solutie = '''
+Catalog = dict[str, list[float]]
+
+
+def media(*note: float, zecimale: int = 2) -> float | None:
+    """Media notelor, rotunjită la `zecimale`; None dacă nu e nicio notă."""
+    if not note:
+        return None
+    return round(sum(note) / len(note), zecimale)
+
+
+def adauga_elev(nume: str, *note: float, catalog: Catalog | None = None) -> Catalog:
+    """Adaugă elevul și notele lui în catalog (unul nou, dacă nu primește) și întoarce catalogul."""
+    if catalog is None:
+        catalog = {}
+    catalog[nume] = list(note)
+    return catalog
+
+
+def afiseaza_catalog(catalog: Catalog, *, prag_trecere: float = 5) -> None:
+    """Afișează fiecare elev cu media lui; cei sub `prag_trecere` sunt marcați cu *."""
+    for nume in sorted(catalog):
+        m = media(*catalog[nume])
+        print(f"{nume:<8} {m}{'*' if m is not None and m < prag_trecere else ''}")
+
+
+catalog = adauga_elev("Ana", 9, 10, 8)
+catalog = adauga_elev("Bogdan", 4, 5, 3, catalog=catalog)
+afiseaza_catalog(catalog)
+help(media)
+help(adauga_elev)
+
+# Tipul spune float, dar media("9", "10") ar da TypeError abia la rulare: Python nu verifică type hints.
+'''
+
+[[test]]
+nume = "programul rulează și afișează documentația"
+indiciu = "Apelează `help()` pe două funcții, la finalul fișierului: `help(media)` și încă una. Fiecare afișează „Help on function …” cu docstring-ul funcției."
+stdin = "120\nstudent\n"
+regex = ['help on function[\s\S]*help on function']
+regex_text = "documentația a două funcții (de la help())"
+regex_de_ce = "La final, `help()` trebuie apelat pentru două funcții; fiecare afișează „Help on function …”."
+de_ce = "Testul rulează programul (cu răspunsuri pentru varianta cu calculatorul de reducere) și verifică documentația afișată de help()."

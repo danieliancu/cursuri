@@ -271,7 +271,8 @@ def _exercise_pending(user, topic: Topic) -> bool:
 
 def _resume_exercise(user, topic: Topic) -> None:
     """Elevul a primit iar exercițiul fix: fișierul capitolului se verifică din nou cu testele lui."""
-    ExerciseAttempt.objects.filter(user=user, topic=topic, skipped=True).update(skipped=False, failed=0)
+    ExerciseAttempt.objects.filter(user=user, topic=topic, skipped=True).update(
+        skipped=False, failed=0, last_test="")
 
 
 def _exercise_text(topic: Topic, path: str) -> str:
@@ -361,16 +362,21 @@ def exercise_check(request, body, project):
     mark_working(user, topic)
     att, _ = ExerciseAttempt.objects.get_or_create(user=user, topic=topic)
     if verificare.alt_program(att.last_code, source):
-        att.failed = 0  # elevul a început altceva: indiciile pornesc iar de la prima treaptă
+        att.failed, att.last_test = 0, ""  # elevul a început altceva: indiciile pornesc iar de la prima treaptă
     att.last_code = source
     hint = None
     if v["rezultat"] == "corect":
         att.solved_at = att.solved_at or timezone.now()
     else:
-        att.failed += 1
+        # Un test nou picat, care are indiciul lui: treptele o iau de la capăt, cu indiciul despre exact ce a
+        # greșit elevul. Dacă pică iar același test, urmează indiciile generale ale exercițiului.
+        test = v.get("test", "")
+        att.failed = 1 if v.get("indiciu_test") and test != att.last_test else att.failed + 1
+        att.last_test = test
         level = min(att.failed, len(ex["indicii"]))
         att.hints_shown = max(att.hints_shown, level)
-        hint = {"treapta": level, "din": len(ex["indicii"]), "text": ex["indicii"][level - 1]}
+        text = v["indiciu_test"] if level == 1 and v.get("indiciu_test") else ex["indicii"][level - 1]
+        hint = {"treapta": level, "din": len(ex["indicii"]), "text": text}
     att.save()
 
     mesaj = ai.formuleaza(user, project, verificare.pentru_ai(v, hint), verificare.mesaj_simplu(v, hint and hint["text"]))
@@ -403,7 +409,8 @@ def exercise_skip(request, body, project):
     topic = chapters.topic_for_path(rel)
     if not topic or rel != chapters.exercise_path(topic):
         return JsonResponse({"error": "Fișierul nu are exercițiu fix."}, status=404)
-    ExerciseAttempt.objects.update_or_create(user=user, topic=topic, defaults={"skipped": True, "failed": 0})
+    ExerciseAttempt.objects.update_or_create(
+        user=user, topic=topic, defaults={"skipped": True, "failed": 0, "last_test": ""})
     CodeAnnotation.objects.filter(user=user, project=project, path=rel).delete()
     return {"ok": True}
 

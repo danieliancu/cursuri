@@ -1,0 +1,97 @@
+titlu = "Agenda de contacte"
+enunt = "Agenda de contacte: un dicționar nume → {telefon, oraș}, cu meniu (adaugă, caută, șterge, afișează, statistică pe orașe)."
+structura = ["dict", "while_true", "apel:title"]
+indicii = [
+    "Păstrează cele trei contacte din exemplul de început (testele le folosesc). Meniul: `while True:`, citești opțiunea; `0` → `break`. Numele îl citești mereu cu `.strip().title()`.",
+    "Căutare și ștergere fără `KeyError`: întâi `if nume in agenda:`, altfel afișezi „nu există”. Ștergerea: `del agenda[nume]`. Afișarea sortată: `for nume in sorted(agenda):`.",
+    "Statistica: `pe_orase = {}`, apoi `for date in agenda.values():` și `pe_orase[oras] = pe_orase.get(oras, 0) + 1`. Afișează fiecare oraș cu numărul lui, de exemplu „Cluj: 2”.",
+]
+inceput = '''
+# 1. Agenda: nume -> {"telefon": ..., "oras": ...}, cu trei contacte de pornire (exemplu: așa se scrie)
+agenda = {
+    "Ana Popescu": {"telefon": "0722111222", "oras": "Cluj"},
+    "Mihai Ionescu": {"telefon": "0733444555", "oras": "Iași"},
+    "Elena Radu": {"telefon": "0744666777", "oras": "Cluj"},
+}
+
+# 2. Meniul: 1 = adaugă/actualizează, 2 = caută, 3 = șterge, 4 = afișează sortat, 5 = statistică, 0 = ieșire
+#    scrii așa: while True:
+#                   optiune = input("Opțiunea: ").strip()
+#                   if optiune == "0":
+#                       break
+
+
+# 3. Numele se citesc cu .title(); un nume inexistent afișează un mesaj, fără KeyError
+#    scrii așa: nume = input("Numele: ").strip().title()
+#               if nume in agenda:
+
+
+# 4. Statistica: dicționarul oras -> număr de contacte
+#    scrii așa: pe_orase[oras] = pe_orase.get(oras, 0) + 1
+'''
+solutie = '''
+agenda = {
+    "Ana Popescu": {"telefon": "0722111222", "oras": "Cluj"},
+    "Mihai Ionescu": {"telefon": "0733444555", "oras": "Iași"},
+    "Elena Radu": {"telefon": "0744666777", "oras": "Cluj"},
+}
+
+while True:
+    print("1 = adaugă, 2 = caută, 3 = șterge, 4 = toate, 5 = statistică, 0 = ieșire")
+    optiune = input("Opțiunea: ").strip()
+    if optiune == "0":
+        break
+    if optiune == "1":
+        nume = input("Numele: ").strip().title()
+        telefon = input("Telefonul: ").strip()
+        oras = input("Orașul: ").strip().title()
+        agenda[nume] = {"telefon": telefon, "oras": oras}
+        print(f"Salvat: {nume}")
+    elif optiune == "2":
+        cautat = input("Numele căutat: ").strip().title()
+        if cautat in agenda:
+            print(f"{cautat}: {agenda[cautat]['telefon']}, {agenda[cautat]['oras']}")
+        else:
+            print(f"{cautat} nu există în agendă.")
+            for nume in sorted(agenda):
+                if cautat.lower() in nume.lower():
+                    print(f"  Poate: {nume}")
+    elif optiune == "3":
+        nume = input("Numele de șters: ").strip().title()
+        if nume in agenda:
+            del agenda[nume]
+            print(f"Șters: {nume}")
+        else:
+            print(f"{nume} nu există în agendă.")
+    elif optiune == "4":
+        for nume in sorted(agenda):
+            print(f"{nume:<15} {agenda[nume]['telefon']:<12} {agenda[nume]['oras']}")
+    elif optiune == "5":
+        pe_orase = {}
+        for date in agenda.values():
+            pe_orase[date["oras"]] = pe_orase.get(date["oras"], 0) + 1
+        for oras, numar in pe_orase.items():
+            print(f"{oras}: {numar}")
+    else:
+        print("Opțiune necunoscută.")
+'''
+
+[[test]]
+nume = "caută „ana popescu”, apoi statistica"
+indiciu = "Numele căutat trece prin `.strip().title()`, deci „ana popescu” devine „Ana Popescu”. La statistică numeri contactele pe oraș: în agenda de pornire sunt 2 în Cluj și 1 în Iași."
+stdin = "2\nana popescu\n5\n0\n"
+contine = ["0722111222"]
+regex = ['\bcluj\W{1,4}2\b', '\biasi\W{1,4}1\b']
+regex_text = "statistica „Cluj: 2” și „Iași: 1”"
+regex_de_ce = "În agenda de pornire sunt două contacte din Cluj și unul din Iași; statistica le afișează așa, de exemplu „Cluj: 2”."
+de_ce = "„ana popescu” e același contact cu „Ana Popescu” (telefon 0722111222)."
+
+[[test]]
+nume = "adaugă, caută, șterge, afișează"
+indiciu = "După `del agenda[\"Mihai Ionescu\"]`, căutarea lui trebuie să afișeze un mesaj, nu `KeyError`. Afișarea parcurge `sorted(agenda)`: Ana Popescu, Elena Radu, Ion Vasile, fără Mihai."
+stdin = "1\nion vasile\n0755000111\nBrașov\n2\nION VASILE\n3\nmihai ionescu\n2\nmihai ionescu\n4\n0\n"
+contine = ["0755000111"]
+regex = ['\bana popescu\b[\s\S]*\belena radu\b[\s\S]*\bion vasile\b(?![\s\S]*mihai ionescu)']
+regex_text = "lista sortată: Ana Popescu, Elena Radu, Ion Vasile (fără Mihai Ionescu, care a fost șters)"
+regex_de_ce = "La opțiunea 4, contactele se afișează sortate după nume, iar Mihai Ionescu nu mai e în agendă după ștergere."
+de_ce = "Ion Vasile e adăugat (cu .title()), găsit cu „ION VASILE”, iar Mihai Ionescu e șters: căutarea lui afișează un mesaj."

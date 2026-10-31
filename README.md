@@ -32,19 +32,27 @@ Lecțiile sunt fișiere Markdown în `tutor/lessons/NN-slug.md` (planul: `docs/P
 
 ## Verificare fără AI (cost redus)
 „Rulează și verifică” și „Verifică-mi codul” aleg, în ordine, varianta cea mai ieftină:
-1. **Exercițiu fix** (`tutor/exercitii/NN-slug.toml`, acum lecțiile 1–11), scris în fișierul capitolului
-   (`capitole/NN-slug/<lecție>.py`, cu enunțul lecției în antet și, dedesubt, un exemplu de început: primul pas scris ca model, apoi „scrii așa: …” la fiecare pas (`inceput` în TOML)) și verificat așa până e rezolvat; după aceea
+1. **Exercițiu fix** (`tutor/exercitii/NN-slug.toml`, acum lecțiile 1–22), scris în fișierul capitolului
+   (`capitole/NN-slug/<lecție>.py`, care începe cu un exemplu de început: primul pas scris ca model, apoi
+   „scrii așa: …” la fiecare pas, `inceput` în TOML) și verificat așa până e rezolvat; după aceea
    fișierul e liber pentru sarcinile tutorelui. Plasa de siguranță: linkul „Nu lucrez la exercițiul lecției”
    din balon trece fișierul la tutore (modelul mic) până la „Exercițiu nou”. Verdictul îl dă codul
    (`tutor/verificare.py`: teste pe output, structură prin AST, pyflakes, indicii în 3 trepte);
    modelul mic doar îl formulează într-o frază, iar fără AI rămâne un șablon.
+   Fiecare test are `indiciu`-ul lui: când pică un test nou, primul indiciu e despre exact ce a greșit
+   elevul; dacă pică iar același test, urmează indiciile generale ale exercițiului.
+   Lecțiile 23–44 n-au teste, dar au exemplu de început (`tutor/exercitii/inceput/NN-slug.py`), sub enunțul
+   din antet; acolo verifică modelul mic.
+   „Verifică-mi codul” pe un fișier fără cod (doar comentarii) răspunde fără AI. La verificare, modelul mic
+   poate doar bifa „învățat” lecția verificată, nu începe sau schimbă alte lecții.
 2. **Eroare cunoscută**: `tutor/erori.py` o explică în română într-o casetă sub terminal, cu link spre
-   lecție; tutorele AI e doar la butonul „Întreabă AI”.
+   secțiunea din lecție (`/progres/#slug:s-titlu`); tutorele AI e doar la butonul „Întreabă AI”.
 3. Altfel, **modelul mic** (`PYTUTOR_OPENAI_CHECK_MODEL` / `PYTUTOR_CHECK_MODEL`) cu context redus.
    Întrebările libere rămân la modelul mare.
 „Următorul pas” și „Exercițiu nou” răspund fără AI când se poate: pasul următor din curriculum (lecția activă,
 altfel prima neînvățată) și exercițiul ei fix, dacă nu e rezolvat. Altfel întreabă tutorele AI.
-- `python tools/verifica_exercitii.py` verifică exercițiile: soluția de referință trece, un fișier gol nu.
+- `python tools/verifica_exercitii.py` verifică exercițiile (soluția de referință trece, un fișier gol și exemplul de
+  început nu, fiecare test are `indiciu`) și exemplele de început fără teste (Python valid, pași „scrii așa”).
 - `python manage.py raport_cost` compară costul AI plătit cu cel estimat în sistemul nou (doar citește).
 
 ## Pornire
