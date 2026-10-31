@@ -1,0 +1,66 @@
+titlu = "Verificatorul de parolă"
+enunt = "Verificator de parolă, cu „Parolă puternică: True/False” la final."
+structura = ["input", "apel:lower", "apel:upper"]
+indicii = [
+    "Fiecare verificare e o comparație care dă `True` sau `False`, de exemplu `lunga = len(parola) >= 10`. Afișeaz-o cu textul ei.",
+    "O parolă are o literă mare dacă `parola.lower() != parola`, și una mică dacă `parola.upper() != parola`. Numele nu apare în ea dacă `nume.lower() not in parola.lower()`.",
+    "Rezultatul final leagă toate verificările cu `and`: `puternica = lunga and are_mare and are_mica and fara_nume and nu_e_interzisa`, apoi `print(\"Parolă puternică:\", puternica)`.",
+]
+inceput = '''
+# 1. Numele de utilizator și parola (exemplu: așa se scrie)
+nume = input("Nume de utilizator: ")
+parola = input("Parola: ")
+
+# 2. Fiecare verificare, afișată cu textul ei
+#    scrii așa: lunga = len(parola) >= 10
+#               print("Cel puțin 10 caractere:", lunga)
+
+
+# 3. O singură valoare la final, din toate verificările
+#    scrii așa: print("Parolă puternică:", lunga and ...)
+
+
+# 4. Salutul opțional; dacă e gol, folosești numele de utilizator
+#    scrii așa: print("Salut,", salut or nume)
+'''
+solutie = '''
+nume = input("Nume de utilizator: ")
+parola = input("Parola: ")
+
+lunga = len(parola) >= 10
+are_mare = parola.lower() != parola
+are_mica = parola.upper() != parola
+fara_nume = nume.lower() not in parola.lower()
+nu_e_interzisa = parola != "parola123" and parola != "qwerty1234"
+
+print("Cel puțin 10 caractere:", lunga)
+print("Literă mare și mică:", are_mare and are_mica)
+print("Nu conține numele:", fara_nume)
+print("Nu e interzisă:", nu_e_interzisa)
+print("Parolă puternică:", lunga and are_mare and are_mica and fara_nume and nu_e_interzisa)
+
+salut = input("Cum să te salutăm? ")
+print("Salut,", salut or nume)
+'''
+
+[[test]]
+nume = "parolă bună"
+stdin = "ana\nParolaMea2026\n\n"
+contine = ["Parolă puternică: True"]
+nu_contine = ["Parolă puternică: False"]
+
+[[test]]
+nume = "parola conține numele"
+stdin = "ana\nBananaSplit99\n\n"
+contine = ["Parolă puternică: False"]
+de_ce = "„BananaSplit99” conține „ana” (indiferent de literele mari), deci nu e puternică."
+
+[[test]]
+nume = "parolă scurtă"
+stdin = "ion\nScurta1\n\n"
+contine = ["Parolă puternică: False"]
+
+[[test]]
+nume = "parolă interzisă"
+stdin = "maria\nqwerty1234\nMaria\n"
+contine = ["Parolă puternică: False"]

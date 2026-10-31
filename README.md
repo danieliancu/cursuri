@@ -30,6 +30,23 @@ Lecțiile sunt fișiere Markdown în `tutor/lessons/NN-slug.md` (planul: `docs/P
 - `python tools/verifica_lectie.py tutor/lessons/04-stringuri.md` rulează codul din lecție în
   containerul sandbox și compară output-ul cu cel scris în lecție (convențiile sunt în script).
 
+## Verificare fără AI (cost redus)
+„Rulează și verifică” și „Verifică-mi codul” aleg, în ordine, varianta cea mai ieftină:
+1. **Exercițiu fix** (`tutor/exercitii/NN-slug.toml`, acum lecțiile 1–11), scris în fișierul capitolului
+   (`capitole/NN-slug/<lecție>.py`, cu enunțul lecției în antet și, dedesubt, un exemplu de început: primul pas scris ca model, apoi „scrii așa: …” la fiecare pas (`inceput` în TOML)) și verificat așa până e rezolvat; după aceea
+   fișierul e liber pentru sarcinile tutorelui. Plasa de siguranță: linkul „Nu lucrez la exercițiul lecției”
+   din balon trece fișierul la tutore (modelul mic) până la „Exercițiu nou”. Verdictul îl dă codul
+   (`tutor/verificare.py`: teste pe output, structură prin AST, pyflakes, indicii în 3 trepte);
+   modelul mic doar îl formulează într-o frază, iar fără AI rămâne un șablon.
+2. **Eroare cunoscută**: `tutor/erori.py` o explică în română într-o casetă sub terminal, cu link spre
+   lecție; tutorele AI e doar la butonul „Întreabă AI”.
+3. Altfel, **modelul mic** (`PYTUTOR_OPENAI_CHECK_MODEL` / `PYTUTOR_CHECK_MODEL`) cu context redus.
+   Întrebările libere rămân la modelul mare.
+„Următorul pas” și „Exercițiu nou” răspund fără AI când se poate: pasul următor din curriculum (lecția activă,
+altfel prima neînvățată) și exercițiul ei fix, dacă nu e rezolvat. Altfel întreabă tutorele AI.
+- `python tools/verifica_exercitii.py` verifică exercițiile: soluția de referință trece, un fișier gol nu.
+- `python manage.py raport_cost` compară costul AI plătit cu cel estimat în sistemul nou (doar citește).
+
 ## Pornire
 1. În `.env`: `PYTUTOR_PROVIDER=anthropic` sau `openai` și cheia corespunzătoare.
 2. Docker Desktop pornit (dacă folosești sandbox-ul).

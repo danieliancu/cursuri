@@ -1,0 +1,84 @@
+titlu = "Calculatorul de reducere"
+enunt = "Calculator de reducere: valoarea coșului, apoi codul (STUDENT sau VARA2026)."
+structura = ["input", "if", "elif", "else"]
+indicii = [
+    "Citește valoarea coșului ca text, înlocuiește virgula cu punct și verifică-l cu `text.replace(\".\", \"\", 1).isdigit()` înainte de `float(...)`. Tot calculul stă pe ramura `else`.",
+    "Transportul depinde doar de coș: `15` sub 100 lei, altfel `0`. Codul îl compari după `.upper()`: `if cod == \"STUDENT\":`, `elif cod == \"VARA2026\":`, `elif cod != \"\":` pentru „Cod necunoscut”.",
+    "Totalul e `cos - reducere + transport`. Exemplu: coș 120 cu `student` → reducere 12.00, transport 0.00, total 108.00; coș 80 fără cod → total 95.00.",
+]
+inceput = '''
+# 1. Valoarea coșului, verificată înainte de calcul (exemplu: așa se scrie)
+text = input("Valoarea coșului: ").strip().replace(",", ".")
+if not text.replace(".", "", 1).isdigit():
+    print("Valoarea nu e un număr valid.")
+else:
+    cos = float(text)
+    print(f"Coș: {cos:.2f} lei")
+
+    # 2. Codul de reducere (poate fi gol)
+    #    scrii așa: cod = input("Cod de reducere: ").strip().upper()
+
+    # 3. Transportul și reducerea, după reguli
+    #    scrii așa: if cos < 100:  ...  și  if cod == "STUDENT":  ...  elif ...
+
+    # 4. Reducerea, transportul și totalul, cu 2 zecimale
+    #    scrii așa: print(f"Total: {total:.2f} lei")
+'''
+solutie = '''
+text = input("Valoarea coșului: ").strip().replace(",", ".")
+if not text.replace(".", "", 1).isdigit():
+    print("Valoarea nu e un număr valid.")
+else:
+    cos = float(text)
+    cod = input("Cod de reducere: ").strip().upper()
+    reducere = 0
+    if cos < 100:
+        transport = 15
+    else:
+        transport = 0
+    if cod == "STUDENT":
+        reducere = cos * 0.10
+    elif cod == "VARA2026":
+        if cos >= 150:
+            reducere = 20
+        else:
+            print("VARA2026 se aplică doar coșurilor de cel puțin 150 lei.")
+    elif cod != "":
+        print("Cod necunoscut")
+    total = cos - reducere + transport
+    print(f"Coș: {cos:.2f} lei")
+    print(f"Reducere: {reducere:.2f} lei")
+    print(f"Transport: {transport:.2f} lei")
+    print(f"Total: {total:.2f} lei")
+'''
+
+[[test]]
+nume = "valoare care nu e număr"
+stdin = "abc\n"
+nu_contine = ["total"]
+de_ce = "Când valoarea nu e un număr, programul afișează un mesaj și nu mai calculează nimic (nici totalul)."
+
+[[test]]
+nume = "coș de 120 lei cu codul student"
+stdin = "120\nstudent\n"
+contine = ["12.00", "108.00"]
+de_ce = "STUDENT dă 10% reducere (12.00 lei), transportul e gratuit de la 100 lei, deci totalul e 108.00."
+
+[[test]]
+nume = "coș de 80 lei, fără cod"
+stdin = "80\n\n"
+contine = ["15.00", "95.00"]
+nu_contine = ["cod necunoscut"]
+de_ce = "Sub 100 lei transportul e 15 lei, deci totalul e 95.00. Un cod gol nu afișează niciun mesaj."
+
+[[test]]
+nume = "coș de 150 lei cu VaRa2026"
+stdin = "150\nVaRa2026\n"
+contine = ["20.00", "130.00"]
+de_ce = "Codul se acceptă cu orice litere mari și mici; VARA2026 dă 20 lei reducere de la 150 lei în sus."
+
+[[test]]
+nume = "coș de 99,5 lei cu un cod greșit"
+stdin = "99,5\nxyz\n"
+contine = ["cod necunoscut", "114.50"]
+de_ce = "Valoarea poate avea virgulă; un cod necunoscut afișează „Cod necunoscut”, iar totalul e 99.50 + 15 transport."

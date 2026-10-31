@@ -255,6 +255,19 @@ def _profile_text(user) -> str:
 
 def _curriculum_position(user, project: str) -> str:
     """Unde e elevul în curriculum + reamintirea că sumarul din stânga depinde de `record_progress`."""
+    opened = StudentProfile.objects.filter(user=user).values_list("current_topic", flat=True).first()
+    if opened:
+        topic = Topic.objects.select_related("module").get(pk=opened)
+        st = TopicProgress.objects.filter(user=user, topic=topic).values_list("status", flat=True).first() or STATUS_TODO
+        main = chapters.ensure(user, project, topic)
+        where = f"Lecția deschisă acum de elev: `{topic.slug}` ({topic.title}) — {st}. " + (
+            f"Fișierul capitolului: `{main}`.{_exercise_note(topic)}" if main else
+            "Lecție Django: nu are fișier de capitol. " + _django_projects_note(user, project)
+        )
+        return where + (
+            " Sumarul se actualizează doar prin `record_progress`, pe subiectul care acoperă conceptul exersat: "
+            "exercițiu rezolvat corect (îl feliciți) → „învățat”, în acest răspuns."
+        )
     tp = (
         TopicProgress.objects.filter(user=user, status=STATUS_DOING)
         .select_related("topic").order_by("-updated_at").first()
@@ -262,7 +275,7 @@ def _curriculum_position(user, project: str) -> str:
     if tp:
         main = chapters.ensure(user, project, tp.topic)
         where = f"Pasul activ în sumarul elevului: `{tp.topic.slug}` ({tp.topic.title}) — în lucru. " + (
-            f"Fișierul capitolului: `{main}` (exercițiile lui se scriu acolo)." if main else
+            f"Fișierul capitolului: `{main}` (exercițiile lui se scriu acolo).{_exercise_note(tp.topic)}" if main else
             "Lecție Django: nu are fișier de capitol. " + _django_projects_note(user, project)
         )
     else:
@@ -276,6 +289,16 @@ def _curriculum_position(user, project: str) -> str:
         where + " Sumarul se actualizează doar prin `record_progress`, pe subiectul care acoperă conceptul exersat: "
         "subiect nou început → „în lucru”; "
         "exercițiu rezolvat corect (îl feliciți) → „învățat”, în acest răspuns."
+    )
+
+
+def _exercise_note(topic: Topic) -> str:
+    path = chapters.exercise_path(topic)
+    return (
+        f" Lecția are un exercițiu fix, scris în `{path}`; până îl rezolvă elevul, îl verifică automat aplicația "
+        "(teste și baloane), nu tu. Până atunci nu-i da alte sarcini în acest capitol: trimite-l la exercițiul "
+        "lecției (enunțul e în lecție, la „Exercițiu”). După ce e rezolvat, fișierul e liber pentru sarcinile tale."
+        if path else ""
     )
 
 
@@ -319,13 +342,15 @@ def _record_progress(user, project: str, args: dict, events: list) -> tuple[str,
     events.append({"type": "progress", "topic": topic.title, "status": status})
     result = f"Salvat: {topic.title} → {status}" + (f" (cu codul din {path})" if path else "") + "."
     if status == STATUS_DOING:
-        # Capitolul activ primește folderul lui de cod; editorul elevului îl deschide singur.
+        # Capitolul activ primește folderul lui de cod; elevul îl deschide când vrea („Următorul pas”, sumarul).
         main = chapters.ensure(user, project, topic)
         if main:
             events.append({"type": "chapter", "path": main, "topic": topic.title})
             result += (
-                f" Fișierul acestui capitol: `{main}` (îl deschid în editorul elevului). Exercițiile pentru "
-                "acest subiect se scriu acolo — referă-te la el, nu la fișierele altor capitole."
+                f" Fișierul acestui capitol: `{main}`. Editorul NU trece singur la el: elevul decide când, apăsând "
+                "„Următorul pas” sau lecția din sumar; spune-i asta. Exercițiile pentru acest subiect se scriu "
+                "acolo — referă-te la el, nu la fișierele altor capitole."
+                + _exercise_note(topic)
             )
         else:
             result += " Lecție Django: fără fișier de capitol. " + _django_projects_note(user, project)
@@ -347,8 +372,9 @@ def _django_projects_note(user, project: str) -> str:
 
 
 def _next_active_note(user) -> str:
-    """După „învățat”, sumarul și editorul elevului trec singure la alt subiect (aceeași regulă ca în app.js:
-    ultimul subiect „în lucru”, altfel primul neînvățat). Tutorele trebuie să știe care, ca să nu propună altceva."""
+    """După „învățat”, sumarul marchează alt subiect ca pas activ (aceeași regulă ca în app.js: ultimul subiect
+    „în lucru”, altfel primul neînvățat). Editorul nu se mută: elevul decide. Tutorele trebuie să știe care e
+    pasul, ca să nu propună altceva."""
     doing = (
         TopicProgress.objects.filter(user=user, status=STATUS_DOING)
         .select_related("topic").order_by("-updated_at").first()
@@ -362,10 +388,10 @@ def _next_active_note(user) -> str:
         if not nxt:
             return " Elevul a terminat tot curriculumul."
     return (
-        f" Sumarul și editorul elevului trec acum la `{nxt.slug}` ({nxt.title}) — {why}. Pasul următor pe care "
-        f"îl propui trebuie să fie acesta. Dacă e mai potrivit alt subiect (continuarea firească a celui terminat "
-        f"sau ce a cerut elevul), apelează `record_progress` cu „în lucru” pe el ÎN ACELAȘI răspuns, ca sumarul "
-        f"și editorul să-l urmeze; nu propune un subiect fără să-l faci activ."
+        f" Sumarul elevului arată acum ca pas următor `{nxt.slug}` ({nxt.title}) — {why}. Propune-l, dar nu "
+        f"începe tu lecția: elevul alege când trece la ea, cu „Următorul pas” sau din sumar. Dacă e mai potrivit alt "
+        f"subiect (continuarea firească a celui terminat sau ce a cerut elevul), apelează `record_progress` cu "
+        f"„în lucru” pe el ÎN ACELAȘI răspuns, ca „Următorul pas” să ducă acolo."
     )
 
 
@@ -756,27 +782,34 @@ def _tool_entry(name, args) -> dict:
     return entry
 
 
-def chat_stream(user, project: str, user_text: str, ctx: dict) -> Iterator[dict]:
+def chat_stream(user, project: str, user_text: str, ctx: dict, mode: str = "chat") -> Iterator[dict]:
     """Trimite mesajul elevului și emite evenimente pentru UI pe măsură ce vine răspunsul.
 
     Istoricul e salvat mereu în formatul de blocuri Anthropic (text / tool_use / tool_result);
     backend-ul OpenAI îl convertește la trimitere, așa că poți schimba furnizorul oricând.
+
+    `mode="check"` („Rulează și verifică”): modelul mic, cu un context redus (sarcina, fișierul, rularea)
+    și doar uneltele pentru baloane și progres. Întrebările libere rămân la modelul mare.
     """
+    check = mode == "check"
     conv, _ = Conversation.objects.get_or_create(user=user, project=project)
+    previous = _last_tutor_text(conv) if check else ""
     user_msg = ChatMessage.objects.create(
         conversation=conv,
         role="user",
         content=[
-            {"type": "text", "text": _context_block(user, project, ctx)},
+            {"type": "text", "text": _check_context(user, project, ctx, previous) if check
+             else _context_block(user, project, ctx)},
             {"type": "text", "text": user_text},
         ],
         ui_text=user_text,
     )
-    _maybe_compact(user, project, conv)
+    if not check:
+        _maybe_compact(user, project, conv)
     rounds = _openai_rounds if settings.PYTUTOR_PROVIDER == "openai" else _anthropic_rounds
     answered = False
     reply, progress_saved = "", False
-    for ev in rounds(user, project, conv):
+    for ev in rounds(user, project, conv, since=user_msg.id if check else None):
         if ev["type"] == "_saved":
             answered = True
             continue
@@ -878,6 +911,108 @@ def _progress_check(user, project: str, user_text: str, reply: str, open_file) -
     yield from events
 
 
+# ---------------------------------------------------------------- Verificarea de rutină (model mic)
+# „Rulează și verifică” e cel mai des apel: elevul a rulat codul și vrea să știe dacă e bine. Nu are nevoie
+# de tot curriculumul, de profil sau de istoricul lung — doar de sarcină, de cod și de rezultat.
+
+CHECK_PROMPT = """Ești PyTutor, tutorele de Python al unui elev începător. Vorbești în română (cu diacritice), cald și direct.
+Elevul tocmai a rulat programul. Primești în <context> sarcina (din lecție și/sau ultimul tău mesaj), fișierul cu numere de linie și rezultatul rulării.
+Spune dacă programul face ce cere sarcina:
+- Corect: felicită-l în 1–2 propoziții, eventual o observație scurtă de stil; șterge baloanele vechi (`annotate_code` cu `notes` gol) și apelează `record_progress` cu „învățat” pe subiectul indicat, cu `path` = fișierul.
+- Greșit sau incomplet: pune baloane (`annotate_code`) pe liniile cu probleme — ce e greșit și un indiciu, NU soluția completă. În panou doar 1–2 propoziții care trimit la baloane, iar ultima propoziție e pasul concret: „…apoi apasă **Rulează și verifică**.”
+- Programul a crăpat: explică eroarea pe scurt, în balon pe linia ei.
+Nu da exerciții noi și nu schimba subiectul. Nu scrie codul în locul lui. Răspuns scurt."""
+
+CHECK_TOOL_NAMES = ("annotate_code", "record_progress")
+CHECK_TOOLS = [t for t in TOOLS if t["name"] in CHECK_TOOL_NAMES]
+CHECK_MAX_ROUNDS = 3
+
+
+def _exercise_section(lesson: str) -> str:
+    """Secțiunea „## Exercițiu” dintr-o lecție (fără restul lecției)."""
+    start = lesson.find("## Exercițiu")
+    if start < 0:
+        return ""
+    end = lesson.find("\n## ", start + 5)
+    return lesson[start:end if end > 0 else None].strip()
+
+
+def _last_tutor_text(conv: Conversation) -> str:
+    """Textul ultimului răspuns al tutorelui (poate conține sarcina dată în chat)."""
+    texts: list[str] = []
+    for m in conv.messages.order_by("-id")[:12]:
+        if m.role == "user" and not m.is_tool_result:
+            break
+        if m.role == "assistant":
+            texts[:0] = [b.get("text", "") for b in m.content if b.get("type") == "text"]
+    return "\n\n".join(t for t in texts if t).strip()
+
+
+def _check_context(user, project: str, ctx: dict, previous: str) -> str:
+    parts = [f"Elev: {user.get_username()}"]
+    open_file = ctx.get("open_file")
+    topic = chapters.topic_for_path(open_file) if isinstance(open_file, str) else None
+    if not topic:
+        tp = (TopicProgress.objects.filter(user=user, status=STATUS_DOING)
+              .select_related("topic").order_by("-updated_at").first())
+        topic = tp.topic if tp else None
+    if topic:
+        parts.append(f"Subiectul: `{topic.slug}` ({topic.title}).")
+        # Unde exercițiul lecției are fișierul lui (exercitiu.py, verificat de cod), aici e altă sarcină:
+        # o încercare a elevului sau ce i-ai dat în chat.
+        section = "" if chapters.exercise_path(topic) else _exercise_section(topic.lesson)
+        if section:
+            parts.append(f"Exercițiul din lecție:\n{section[:3000]}")
+        else:
+            parts.append("Fișierul nu e exercițiul fix al lecției: sarcina e cea din ultimul tău mesaj sau ce a "
+                         "ales elevul să încerce. Judecă programul după ea; dacă nu e clară, spune doar ce face programul.")
+    if previous:
+        parts.append(f"Ultimul tău mesaj către elev (poate conține sarcina):\n{previous[-3000:]}")
+    if open_file:
+        parts.append(_open_file_snapshot(user, project, str(open_file)))
+    parts.append(_last_run_text(user, project, open_file))
+    return "<context>\n" + "\n\n".join(parts) + "\n</context>"
+
+
+def formuleaza(user, project: str, verdict: dict, fallback: str) -> str:
+    """Transformă verdictul dat de cod într-o frază caldă, cu modelul mic; la orice problemă, `fallback`."""
+    prompt = json.dumps(verdict, ensure_ascii=False)[:3000]
+    try:
+        if settings.PYTUTOR_PROVIDER == "openai":
+            r = openai.OpenAI().chat.completions.create(
+                model=settings.OPENAI_CHECK_MODEL,
+                messages=[{"role": "system", "content": PHRASE_PROMPT}, {"role": "user", "content": prompt}],
+                max_tokens=300,
+            )
+            details = getattr(r.usage, "prompt_tokens_details", None)
+            cached = (getattr(details, "cached_tokens", 0) or 0) if details else 0
+            usage.record(
+                user, project, "openai", r.model or settings.OPENAI_CHECK_MODEL,
+                input_tokens=(r.usage.prompt_tokens or 0) - cached,
+                output_tokens=r.usage.completion_tokens or 0, cache_read_tokens=cached,
+            )
+            text = r.choices[0].message.content or ""
+        else:
+            r = anthropic.Anthropic().messages.create(
+                model=settings.ANTHROPIC_CHECK_MODEL, max_tokens=1000, system=PHRASE_PROMPT,
+                output_config={"effort": "low"},
+                messages=[{"role": "user", "content": prompt}],
+            )
+            usage.record(user, project, "anthropic", r.model,
+                         input_tokens=r.usage.input_tokens or 0, output_tokens=r.usage.output_tokens or 0)
+            text = "".join(b.text for b in r.content if b.type == "text")
+    except (anthropic.APIError, openai.OpenAIError, TypeError, AttributeError):
+        return fallback
+    return text.strip() or fallback
+
+
+PHRASE_PROMPT = """Ești tutorele de Python al unui elev începător. Primești în JSON verdictul verificării automate a exercițiului lui (corect sau greșit, ce s-a așteptat, ce a ieșit, rândul, eroarea explicată, indiciul).
+Scrie-i elevului 1–3 propoziții în română (cu diacritice), calde și concrete:
+- corect: felicită-l scurt și spune-i că poate trece la lecția următoare;
+- greșit: spune exact ce nu se potrivește (folosește valorile din verdict, cu `cod` pentru cod și valori). Explică pe baza lui `de_ce` (ce verifică testul) sau a erorii; adaugă `indiciu` doar dacă e legat de ce a greșit. NU da soluția și nu scrie cod nou.
+Fără titluri, fără liste. Termină cu pasul concret, de exemplu „Corectează și apasă din nou **Rulează și verifică**.”"""
+
+
 def _fatal(message: str) -> dict:
     return {"type": "error", "message": message, "fatal": True}
 
@@ -898,27 +1033,35 @@ def _execute_tools(user, project: str, conv: Conversation, calls: list[tuple[str
 
 # ---------------------------------------------------------------- Anthropic (Claude)
 
-def _anthropic_rounds(user, project: str, conv: Conversation) -> Iterator[dict]:
+def _check_history(conv: Conversation, since: int) -> list[ChatMessage]:
+    """Verificarea vede doar tura curentă: mesajul elevului (cu contextul redus) și rundele ei."""
+    return list(conv.messages.filter(id__gte=since))
+
+
+def _anthropic_rounds(user, project: str, conv: Conversation, since: int | None = None) -> Iterator[dict]:
+    """`since` = id-ul mesajului de la care începe o verificare de rutină (model mic, context redus)."""
     client = anthropic.Anthropic()
-    system = [{"type": "text", "text": system_text(), "cache_control": {"type": "ephemeral"}}]
-    if conv.summary:
-        system.append({"type": "text", "text": _summary_text(conv)})
-    system.append({"type": "text", "text": _profile_text(user)})
-    for _ in range(MAX_TOOL_ROUNDS):
-        messages = [{"role": m.role, "content": m.content} for m in _api_history(conv)]
+    if since is None:
+        system = [{"type": "text", "text": system_text(), "cache_control": {"type": "ephemeral"}}]
+        if conv.summary:
+            system.append({"type": "text", "text": _summary_text(conv)})
+        system.append({"type": "text", "text": _profile_text(user)})
+        params = dict(
+            model=settings.ANTHROPIC_MODEL, max_tokens=64000, system=system, tools=TOOLS,
+            thinking={"type": "adaptive"}, output_config={"effort": settings.ANTHROPIC_EFFORT},
+            cache_control={"type": "ephemeral"}, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+        )
+        history, max_rounds = (lambda: _api_history(conv)), MAX_TOOL_ROUNDS
+    else:
+        params = dict(
+            model=settings.ANTHROPIC_CHECK_MODEL, max_tokens=8000, system=CHECK_PROMPT, tools=CHECK_TOOLS,
+            output_config={"effort": "low"},
+        )
+        history, max_rounds = (lambda: _check_history(conv, since)), CHECK_MAX_ROUNDS
+    for _ in range(max_rounds):
+        messages = [{"role": m.role, "content": m.content} for m in history()]
         try:
-            with client.beta.messages.stream(
-                model=settings.ANTHROPIC_MODEL,
-                max_tokens=64000,
-                system=system,
-                tools=TOOLS,
-                messages=messages,
-                thinking={"type": "adaptive"},
-                output_config={"effort": settings.ANTHROPIC_EFFORT},
-                cache_control={"type": "ephemeral"},
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-            ) as stream:
+            with client.beta.messages.stream(messages=messages, **params) as stream:
                 started_text = False
                 for event in stream:
                     if event.type == "text":
@@ -986,18 +1129,29 @@ OPENAI_TOOLS = [
     }
     for t in TOOLS
 ]
+OPENAI_CHECK_TOOLS = [t for t in OPENAI_TOOLS if t["function"]["name"] in CHECK_TOOL_NAMES]
 
 
-def _to_openai_messages(user, conv: Conversation) -> list[dict]:
+def _to_openai_messages(user, conv: Conversation, since: int | None = None) -> list[dict]:
     """Convertește istoricul (blocuri Anthropic) în mesaje Chat Completions.
 
     Ordinea contează pentru cache-ul OpenAI (pe prefix): promptul stabil + istoricul sunt la început,
     iar profilul elevului — care se schimbă des — vine la final, ca să nu invalideze tot ce e înainte.
+    Cu `since` (verificare de rutină): doar promptul scurt și tura curentă.
     """
+    if since is not None:
+        return [{"role": "system", "content": CHECK_PROMPT}] + _openai_history(_check_history(conv, since))
     out: list[dict] = [{"role": "system", "content": system_text()}]
     if conv.summary:
         out.append({"role": "system", "content": _summary_text(conv)})
-    for m in _api_history(conv):
+    out += _openai_history(_api_history(conv))
+    out.append({"role": "system", "content": _profile_text(user)})
+    return out
+
+
+def _openai_history(msgs: list[ChatMessage]) -> list[dict]:
+    out: list[dict] = []
+    for m in msgs:
         if m.role == "user" and m.is_tool_result:
             for b in m.content:
                 if b.get("type") == "tool_result":
@@ -1020,7 +1174,6 @@ def _to_openai_messages(user, conv: Conversation) -> list[dict]:
             if calls:
                 msg["tool_calls"] = calls
             out.append(msg)
-    out.append({"role": "system", "content": _profile_text(user)})
     return out
 
 
@@ -1031,28 +1184,30 @@ def _cache_retention() -> dict:
     return {"prompt_cache_retention": "24h"} if _RETENTION["ok"] else {}
 
 
-def _openai_rounds(user, project: str, conv: Conversation) -> Iterator[dict]:
+def _openai_rounds(user, project: str, conv: Conversation, since: int | None = None) -> Iterator[dict]:
     try:
         client = openai.OpenAI()
     except openai.OpenAIError as e:
         yield _fatal(f"Configurare OpenAI lipsă: {e}. Setează OPENAI_API_KEY în .env.")
         return
-    for _ in range(MAX_TOOL_ROUNDS):
+    check = since is not None
+    model = settings.OPENAI_CHECK_MODEL if check else settings.OPENAI_MODEL
+    for _ in range(CHECK_MAX_ROUNDS if check else MAX_TOOL_ROUNDS):
         text = ""
         calls: dict[int, dict] = {}
         finish = None
         oa_usage, oa_model = None, None
         try:
             stream = client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=_to_openai_messages(user, conv),
-                tools=OPENAI_TOOLS,
+                model=model,
+                messages=_to_openai_messages(user, conv, since),
+                tools=OPENAI_CHECK_TOOLS if check else OPENAI_TOOLS,
                 stream=True,
                 stream_options={"include_usage": True},
                 # Cache-ul OpenAI ține implicit câteva minute; cu 24h, o pauză nu mai face primul
                 # apel de după ea să plătească tot istoricul la preț întreg. Cheia ține cererile
                 # aceleiași conversații pe același cache.
-                prompt_cache_key=f"pytutor-u{user.pk}-{project}"[:64],
+                prompt_cache_key=f"pytutor-u{user.pk}-{project}{'-check' if check else ''}"[:64],
                 **_cache_retention(),
             )
             for chunk in stream:
@@ -1098,7 +1253,7 @@ def _openai_rounds(user, project: str, conv: Conversation) -> Iterator[dict]:
             details = getattr(oa_usage, "prompt_tokens_details", None)
             cached = (getattr(details, "cached_tokens", 0) or 0) if details else 0
             usage.record(
-                user, project, "openai", oa_model or settings.OPENAI_MODEL,
+                user, project, "openai", oa_model or model,
                 input_tokens=(oa_usage.prompt_tokens or 0) - cached,
                 output_tokens=oa_usage.completion_tokens or 0,
                 cache_read_tokens=cached,

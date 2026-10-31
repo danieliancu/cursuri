@@ -1,6 +1,7 @@
 # Ce mai e de făcut — lecțiile PyTutor
 
-**Actualizat:** 2026-10-30 — toți pașii de mai jos sunt făcuți; rămâne verificarea de mână în aplicație.
+**Actualizat:** 2026-10-30. Pașii pentru lecții sunt făcuți; rămâne verificarea de mână în aplicație. Ce urmează
+pentru verificarea fără AI și costuri e în secțiunea [Verificare fără AI și cost redus](#verificare-fără-ai-și-cost-redus-2026-10-30).
 Planurile de bază: [PLAN-LECTII.md](PLAN-LECTII.md) (stare pe lecție) și
 [PLAN-CONSTRUCTIE-LECTII.md](PLAN-CONSTRUCTIE-LECTII.md) (cum se construiesc și se verifică).
 
@@ -43,8 +44,9 @@ Proiectul de referință al blogului: `tutor/lessons/_blog/45` … `61` (+ `date
     Descrierea ecranului din prompt e actualizată: acum spune „terminalul de sub editor”;
   - ✅ ordinea lecțiilor e doar o recomandare (decis 2026-10-30): elevul poate sări direct la ce cere; lipsurile
     se explică pe loc sau se oferă o recapitulare, fără obligație. Testat: „vreau direct Django” → pornește imediat;
-  - ✅ după „învățat”, rezultatul lui `record_progress` îi spune tutorelui la ce subiect trec sumarul și editorul
-    (`_next_active_note`); dacă propune altul, trebuie să-l facă „în lucru” în același răspuns.
+  - ✅ după „învățat”, rezultatul lui `record_progress` îi spune tutorelui care e pasul următor din sumar
+    (`_next_active_note`); din 2026-10-30 editorul nu se mai mută singur: elevul trece la lecție când vrea, cu
+    „Următorul pas” sau din sumar.
 - ✅ **Folderul capitolului la Django:** `chapters.has_folder` — subiectele din modulele `django-*` nu mai primesc
   `capitole/NN-slug/` (2026-10-30; folderele goale `45-django-proiect` existente au fost șterse).
 - **Lecțiile Django în PyTutor** — ✅ verificate 2026-10-30 (utilizatorul u4, proiectul `blog`):
@@ -68,6 +70,47 @@ Proiectul de referință al blogului: `tutor/lessons/_blog/45` … `61` (+ `date
   fișierelor complete cerute de comparația cu proiectul de referință.
 - `tools/construieste_blog.py` reface copiile `_blog/` de la zero: corecturile făcute ulterior direct în copii
   (form.as_div, comentariul SECRET_KEY, HSTS, „create”) **nu** sunt în el — dacă îl rulezi, reaplică-le.
+
+## Verificare fără AI și cost redus (2026-10-30)
+
+**Făcut** (detalii în `README.md`, „Verificare fără AI”):
+- **Exerciții fixe pentru lecțiile 1–11** (`tutor/exercitii/NN-slug.toml`): teste pe output, verificări de structură,
+  pyflakes, 3 indicii în trepte, soluție de referință și **exemplu de început** (`inceput`: primul pas scris ca model,
+  apoi „scrii așa: …” la fiecare pas). Se scriu în fișierul capitolului; verdictul îl dă codul, modelul mic doar
+  formulează fraza. Plasa de siguranță din balon: „Nu lucrez la exercițiul lecției”. Validare:
+  `python tools/verifica_exercitii.py`.
+- **Erorile Python explicate în română fără AI** (`tutor/erori.py`, aproximativ 60 de reguli), ca balon pe rândul greșit.
+- **„Rulează și verifică” și „Verifică-mi codul”** fără exercițiu fix: modelul mic, cu context redus.
+- **„Următorul pas” și „Exercițiu nou”** răspund din curriculum, fără AI, când se poate.
+- **Lecția curentă** = ultima deschisă de elev; un click doar ca să te uiți nu mai marchează „în lucru”.
+- **Fișierele capitolelor 12–44** au enunțul lecției ca antet (cele 1–11 au în locul lui exemplul de început).
+- **Raportul de cost:** `python manage.py raport_cost` (doar citește).
+
+**De făcut, în ordinea propusă:**
+
+*Urgent (tehnic)*
+1. **Commit și push.** Tot ce e de după primul commit e doar pe disc.
+2. **Serverele.** Pe portul 8000 rulează încă versiunea veche (`C:\_work\pyth`), iar cea nouă e pe 8010. După oprirea
+   celei vechi, aplicația nouă se mută pe 8000.
+3. **Testele din browser** (`tutor/tests_browser.py`): de rulat după schimbări și de extins cu baloanele de
+   eroare, verificarea exercițiilor și pașii fără AI.
+
+*Economie (continuarea planului)*
+4. **Verificare gratuită pentru fișierele fără cod.** „Verifică-mi codul” pe un fișier doar cu comentarii cheamă acum
+   AI-ul; poate răspunde din cod: „nu ai scris încă niciun cod”.
+5. **Modelul mic să nu schimbe lecții.** La „Rulează și verifică” poate încă marca alte lecții „în lucru”; de limitat
+   la bifarea lecției la care lucrează elevul.
+6. **Exerciții fixe pentru lecțiile 12–22** (colecții și funcții), cu teste și exemple de început, ca la 1–11.
+
+*Calitate (pentru elev)*
+7. **Indicii specifice fiecărui test**, nu 3 indicii generale pe exercițiu: primul indiciu să fie despre exact ce a
+   greșit elevul.
+8. **Exemple de început și la lecțiile 12–44**, chiar fără teste, ca peste tot să existe „scrii așa”.
+9. **Linkuri direct la secțiunea din lecție** din baloanele de eroare (acum deschid lecția întreagă; titlurile din
+   `md.js` au nevoie de `id`-uri).
+
+*De ținut la zi*
+10. **Raportul de cost** peste câteva zile de folosire, ca să se vadă economia reală, nu estimată.
 
 ## După lecții (idei, nu cerute încă)
 

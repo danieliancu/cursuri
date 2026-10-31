@@ -1,0 +1,93 @@
+titlu = "Jocul reparat, meniul și literele duble"
+enunt = "Jocul reparat (numărul secret 37), meniul cu while True și literele duble."
+structura = ["while_true", "break", "continue", "for_else"]
+indicii = [
+    "Ordinea: întâi jocul (numărul secret 37, 7 încercări), apoi meniul, apoi cuvântul. La joc, crește contorul de încercări doar după ce verifici că numărul e nou.",
+    "Meniul: `while True:`, citești opțiunea; `0` → `break`; o opțiune necunoscută → mesaj și `continue`. Literele duble: `for i in range(len(cuvant) - 1):` cu `break` la prima pereche și `else:` pentru „Nicio literă dublă”.",
+    "Cu 50, 25, 25, 37 jocul trebuie să spună „ai ghicit din 3 încercări” (al doilea 25 nu se pune). 100 °C sunt 212.0 °F, iar 10 km sunt 6.21371 mile.",
+]
+inceput = '''
+# 1. Jocul reparat: numărul secret 37, 7 încercări; un număr repetat nu consumă o încercare
+#    (exemplu: așa încep variabilele)
+numar_secret = 37
+max_incercari = 7
+incercate = " "    # numerele încercate, ca în lecție
+incercari = 0      # crește doar pentru numere noi
+ghicit = False
+#    scrii așa: while incercari < max_incercari and not ghicit:
+
+
+# 2. Meniul de conversii: 1 = °C → °F, 2 = km → mile, 0 = ieșire
+#    scrii așa: while True:
+#                   optiune = input("Opțiunea: ")
+#                   if optiune == "0":
+#                       break
+
+
+# 3. Prima literă dublă din cuvânt, sau „Nicio literă dublă” (cu else la for)
+#    scrii așa: for i in range(len(cuvant) - 1):
+'''
+solutie = '''
+numar_secret = 37
+max_incercari = 7
+incercate = " "
+incercari = 0
+ghicit = False
+while incercari < max_incercari and not ghicit:
+    text = input(f"[{incercari + 1}/{max_incercari}] Numărul: ").strip()
+    if not (text.isdigit() and 1 <= int(text) <= 100):
+        print("Scrie un număr întreg între 1 și 100.")
+        continue
+    numar = int(text)
+    if f" {numar} " in incercate:
+        print(f"Ai mai încercat {numar}. Încercarea nu se pune.")
+        continue
+    incercate += f"{numar} "
+    incercari += 1
+    if numar == numar_secret:
+        print(f"Bravo! Ai ghicit din {incercari} încercări.")
+        ghicit = True
+    else:
+        print("Prea mic." if numar < numar_secret else "Prea mare.")
+if not ghicit:
+    print(f"Ai rămas fără încercări. Numărul era {numar_secret}.")
+
+while True:
+    optiune = input("1 = °C → °F, 2 = km → mile, 0 = ieșire: ").strip()
+    if optiune == "0":
+        break
+    if optiune not in ("1", "2"):
+        print("Opțiune necunoscută.")
+        continue
+    text = input("Valoarea: ").strip().replace(",", ".")
+    cifre = text[1:] if text.startswith("-") else text
+    if not cifre.replace(".", "", 1).isdigit():
+        print("Valoare invalidă.")
+        continue
+    valoare = float(text)
+    if optiune == "1":
+        print(f"{valoare} °C = {valoare * 9 / 5 + 32} °F")
+    else:
+        print(f"{valoare} km = {valoare * 0.621371} mile")
+
+cuvant = input("Cuvântul: ").strip()
+for i in range(len(cuvant) - 1):
+    if cuvant[i] == cuvant[i + 1]:
+        print(f"Prima literă dublă: {cuvant[i]}{cuvant[i + 1]}")
+        break
+else:
+    print("Nicio literă dublă")
+'''
+
+[[test]]
+nume = "joc cu un număr repetat, meniu, cuvântul „copii”"
+stdin = "50\n25\n25\n37\n1\n100\n2\n10\n9\n0\ncopii\n"
+contine = ["ghicit din 3", "212", "6.21"]
+nu_contine = ["nicio litera dubla"]
+de_ce = "Cu 50, 25, 25, 37 al doilea 25 nu consumă o încercare, deci ghicești din 3. „copii” are litera dublă „ii”."
+
+[[test]]
+nume = "joc pierdut, cuvânt fără litere duble"
+stdin = "1\n2\n3\n4\n5\n6\n7\n0\ncarte\n"
+contine = ["37", "nicio litera dubla"]
+de_ce = "După 7 încercări greșite se afișează numărul secret (37). „carte” nu are litere duble."

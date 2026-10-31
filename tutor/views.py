@@ -1,4 +1,5 @@
 import json
+import re
 from functools import wraps
 
 from django import forms
@@ -9,14 +10,18 @@ from django.contrib.auth.forms import UserCreationForm
 from django.db.models import Count
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from . import ai, chapters, runner, sandbox, workspace
+from . import ai, chapters, runner, sandbox, verificare, workspace
 from .models import (
     STATUS_DOING,
+    STATUS_DONE,
     STATUS_TODO,
+    ChatMessage,
     CodeAnnotation,
     Conversation,
+    ExerciseAttempt,
     Module,
     StudentProfile,
     Topic,
@@ -141,7 +146,13 @@ def rename(request, body, project):
 
 @api(["POST"])
 def term_run(request, body, project):
-    runner.run(request.user, project, body.get("command", ""))
+    command = body.get("command", "")
+    runner.run(request.user, project, command)
+    # `python capitole/NN-slug/...py`: elevul lucrează la lecția aceea
+    m = re.match(r"""^\s*python3?\s+["']?(capitole/[^\s"']+\.py)""", command)
+    topic = chapters.topic_for_path(m[1]) if m else None
+    if topic:
+        mark_working(request.user, topic)
     return {"ok": True}
 
 
@@ -189,10 +200,11 @@ def chat(request, body, project):
     if not text:
         return JsonResponse({"error": "Mesaj gol"}, status=400)
     ctx = body.get("context") or {}
+    mode = "check" if body.get("mode") == "check" else "chat"
 
     def sse():
         try:
-            for ev in ai.chat_stream(user, project, text, ctx):
+            for ev in ai.chat_stream(user, project, text, ctx, mode=mode):
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         except Exception as e:  # noqa: BLE001 — orice eroare ajunge în UI, nu în gol
             yield f"data: {json.dumps({'type': 'error', 'message': f'Eroare internă: {e}'}, ensure_ascii=False)}\n\n"
@@ -203,20 +215,197 @@ def chat(request, body, project):
     return resp
 
 
+def _open_lesson(user, project: str, topic: Topic) -> str | None:
+    """Elevul a deschis lecția (oricare, și una învățată): devine lecția curentă și îi pregătim folderul de cod.
+    Statusul nu se schimbă: o lecție doar privită nu e „în lucru”."""
+    path = chapters.ensure(user, project, topic)
+    StudentProfile.for_user(user)  # profilul poate lipsi la un elev nou
+    # update(), nu save(): „profil actualizat” (updated_at) înseamnă că l-a actualizat tutorele
+    StudentProfile.objects.filter(user=user).update(current_topic=topic)
+    return path
+
+
+def mark_working(user, topic: Topic) -> None:
+    """Elevul chiar lucrează la lecție (rulează cod în fișierul ei, cere sau verifică exercițiul): „în lucru”.
+    O lecție învățată rămâne învățată."""
+    tp, created = TopicProgress.objects.get_or_create(user=user, topic=topic, defaults={"status": STATUS_DOING})
+    if not created and tp.status != STATUS_DONE:
+        tp.status = STATUS_DOING
+        tp.save()  # actualizează data: e lecția la care s-a lucrat ultima dată
+
+
+def current_topic(user) -> Topic | None:
+    """Lecția curentă: ultima deschisă de elev, altfel pasul următor din curriculum."""
+    p = StudentProfile.objects.filter(user=user).select_related("current_topic__module").first()
+    return (p.current_topic if p and p.current_topic else None) or _current_topic(user)
+
+
 @api(["POST"])
 def chapter(request, body, project):
-    """Elevul a ales o lecție: îi dăm folderul de cod al capitolului și o facem lecția activă."""
+    """Elevul a ales o lecție: îi dăm folderul de cod al capitolului și o facem lecția curentă."""
     user = request.user
     topic = Topic.objects.filter(slug=body.get("topic", "")).first()
     if not topic:
         return JsonResponse({"error": "Subiect inexistent"}, status=404)
-    path = chapters.ensure(user, project, topic)
-    tp, created = TopicProgress.objects.get_or_create(user=user, topic=topic, defaults={"status": STATUS_DOING})
-    if not created:
-        if tp.status == STATUS_TODO:
-            tp.status = STATUS_DOING
-        tp.save()  # actualizează data, ca să devină lecția activă (și pentru tutore)
-    return {"path": path, "status": tp.status}
+    path = _open_lesson(user, project, topic)
+    tp = TopicProgress.objects.filter(user=user, topic=topic).first()
+    return {"path": path, "status": tp.status if tp else STATUS_TODO}
+
+
+def _current_topic(user) -> Topic | None:
+    """Pasul activ, după aceeași regulă ca sumarul din stânga: ultimul subiect „în lucru”, altfel primul neînvățat."""
+    tp = TopicProgress.objects.filter(user=user, status=STATUS_DOING).select_related("topic").order_by("-updated_at").first()
+    if tp:
+        return tp.topic
+    done = TopicProgress.objects.filter(user=user, status=STATUS_DONE).values_list("topic_id", flat=True)
+    return Topic.objects.exclude(id__in=list(done)).order_by("module__order", "order").first()
+
+
+def _exercise_pending(user, topic: Topic) -> bool:
+    """Lecția are exercițiu fix pe care elevul nu l-a rezolvat încă."""
+    if not chapters.exercise_path(topic):
+        return False  # lecția n-are exercițiu fix
+    solved = ExerciseAttempt.objects.filter(user=user, topic=topic, solved_at__isnull=False).exists()
+    return not solved and not TopicProgress.objects.filter(user=user, topic=topic, status=STATUS_DONE).exists()
+
+
+def _resume_exercise(user, topic: Topic) -> None:
+    """Elevul a primit iar exercițiul fix: fișierul capitolului se verifică din nou cu testele lui."""
+    ExerciseAttempt.objects.filter(user=user, topic=topic, skipped=True).update(skipped=False, failed=0)
+
+
+def _exercise_text(topic: Topic, path: str) -> str:
+    ex = verificare.exercitiu(topic.slug)
+    n = chapters.folder_for(topic).split("/")[1].split("-")[0]
+    return (f"Exercițiul lecției {int(n)}, **{ex['titlu']}**: {ex.get('enunt', '')} Îl găsești în `{path}` "
+            f"(l-am deschis în editor); enunțul complet e în [lecție](/progres/#{topic.slug}), la „Exercițiu”. "
+            "Când e gata, apasă **Rulează și verifică**: îl verific pe loc, cu testele lecției.")
+
+
+@api(["POST"])
+def step(request, body, project):
+    """„Următorul pas” și „Exercițiu nou”, fără AI, când răspunsul se știe din curriculum și din exercițiile fixe.
+
+    `{"ai": true}` = nu se poate răspunde din cod (ex. exercițiu nou la o lecție fără exercițiu fix sau deja
+    rezolvat): interfața trimite atunci cererea tutorelui AI, ca înainte.
+    """
+    user = request.user
+    workspace.project_dir(user, project)
+    kind = body.get("tip")
+    if kind == "exercitiu":
+        # lecția fișierului deschis, altfel pasul activ
+        topic = chapters.topic_for_path(body.get("path") or "") or current_topic(user)
+        if not topic or not _exercise_pending(user, topic):
+            return {"ai": True}
+        _open_lesson(user, project, topic)
+        mark_working(user, topic)
+        path = chapters.exercise_path(topic)
+        text = _exercise_text(topic, path)
+        _resume_exercise(user, topic)
+    elif kind == "urmator":
+        topic = _current_topic(user)
+        if not topic:
+            return {"ai": True}
+        main = _open_lesson(user, project, topic)
+        mark_working(user, topic)
+        n = chapters.folder_for(topic).split("/")[1].split("-")[0] if chapters.has_folder(topic) else ""
+        lesson = f"lecția {int(n)}, **{topic.title}**" if n else f"lecția **{topic.title}**"
+        if _exercise_pending(user, topic):
+            path = chapters.exercise_path(topic)
+            text = f"Următorul pas e {lesson}. " + _exercise_text(topic, path)
+            _resume_exercise(user, topic)
+        else:
+            path = main
+            text = (f"Următorul pas e {lesson}. Citește [lecția](/progres/#{topic.slug}), apoi apasă "
+                    "**Exercițiu nou** ca să primești un exercițiu" + (f", pe care îl scrii în `{main}`." if main else "."))
+    else:
+        return JsonResponse({"error": "Pas necunoscut"}, status=400)
+
+    conv, _ = Conversation.objects.get_or_create(user=user, project=project)
+    ask = body.get("text") or ("Dă-mi un exercițiu." if kind == "exercitiu" else "Care e următorul pas?")
+    ChatMessage.objects.create(conversation=conv, role="user", ui_text=ask, content=[{"type": "text", "text": ask}])
+    ChatMessage.objects.create(conversation=conv, role="assistant", content=[{"type": "text", "text": text}])
+    return {"ai": False, "mesaj": text, "path": path, "topic": topic.title}
+
+
+def _chapter_exercise(user, project: str, path: str):
+    """(cale relativă, subiect, exercițiu) dacă `path` e fișierul capitolului și exercițiul fix e încă de rezolvat.
+
+    După ce e rezolvat, sau dacă elevul a spus că lucrează la altceva, fișierul îl verifică modelul mic."""
+    rel = workspace.rel_of(user, project, workspace.safe_path(user, project, path))
+    topic = chapters.topic_for_path(rel)
+    if not topic or rel != chapters.exercise_path(topic) or not _exercise_pending(user, topic):
+        return rel, None, None
+    if ExerciseAttempt.objects.filter(user=user, topic=topic, skipped=True).exists():
+        return rel, None, None
+    return rel, topic, verificare.exercitiu(topic.slug)
+
+
+@api(["POST"])
+def exercise_check(request, body, project):
+    """„Rulează și verifică” pe exercițiul fix al lecției: verdictul îl dă codul, modelul mic doar îl formulează."""
+    user = request.user
+    rel, topic, ex = _chapter_exercise(user, project, body.get("path", ""))
+    if not ex:
+        return {"exercitiu": False}
+    source = workspace.read_file(user, project, rel)["content"]
+
+    def run(stdin):
+        return runner.run_capture(user, project, rel, stdin, timeout=10, echo_input=True)
+
+    try:
+        v = verificare.verifica_cod(source, ex, run, rel.rsplit("/", 1)[-1])
+    except RuntimeError as e:  # ex. Docker oprit
+        return JsonResponse({"error": str(e)}, status=400)
+
+    mark_working(user, topic)
+    att, _ = ExerciseAttempt.objects.get_or_create(user=user, topic=topic)
+    if verificare.alt_program(att.last_code, source):
+        att.failed = 0  # elevul a început altceva: indiciile pornesc iar de la prima treaptă
+    att.last_code = source
+    hint = None
+    if v["rezultat"] == "corect":
+        att.solved_at = att.solved_at or timezone.now()
+    else:
+        att.failed += 1
+        level = min(att.failed, len(ex["indicii"]))
+        att.hints_shown = max(att.hints_shown, level)
+        hint = {"treapta": level, "din": len(ex["indicii"]), "text": ex["indicii"][level - 1]}
+    att.save()
+
+    mesaj = ai.formuleaza(user, project, verificare.pentru_ai(v, hint), verificare.mesaj_simplu(v, hint and hint["text"]))
+    conv, _ = Conversation.objects.get_or_create(user=user, project=project)
+    ask = "Am rulat programul. Verifică exercițiul."
+    ChatMessage.objects.create(conversation=conv, role="user", ui_text=ask, content=[
+        {"type": "text", "text": f"{ask}\n(Verificare automată: {json.dumps(verificare.pentru_ai(v, hint), ensure_ascii=False)})"},
+    ])
+    ChatMessage.objects.create(conversation=conv, role="assistant", content=[{"type": "text", "text": mesaj}])
+
+    # Tot ce s-a găsit (testul, ce trebuia, output-ul, indiciul) stă într-un balon pe rândul potrivit;
+    # în chat rămâne doar fraza tutorelui.
+    events: list = []
+    note = verificare.balon(v, source, hint)
+    ai._run_tool(user, project, "annotate_code", {"path": rel, "notes": [note] if note else []}, events)
+    if v["rezultat"] == "corect":
+        done = TopicProgress.objects.filter(user=user, topic=topic, status=STATUS_DONE).exists()
+        if not done:
+            ai._record_progress(user, project, {"topic": topic.slug, "status": STATUS_DONE, "comment": mesaj,
+                                                "path": rel}, events)
+    return {"exercitiu": True, "verdict": v, "indiciu": hint, "mesaj": mesaj, "events": events}
+
+
+@api(["POST"])
+def exercise_skip(request, body, project):
+    """Plasa de siguranță din balon: „Nu lucrez la exercițiul lecției”. Fișierul capitolului nu mai e
+    verificat cu testele lui (până când elevul cere din nou exercițiul) și i se șterge balonul."""
+    user = request.user
+    rel = workspace.rel_of(user, project, workspace.safe_path(user, project, body.get("path", "")))
+    topic = chapters.topic_for_path(rel)
+    if not topic or rel != chapters.exercise_path(topic):
+        return JsonResponse({"error": "Fișierul nu are exercițiu fix."}, status=404)
+    ExerciseAttempt.objects.update_or_create(user=user, topic=topic, defaults={"skipped": True, "failed": 0})
+    CodeAnnotation.objects.filter(user=user, project=project, path=rel).delete()
+    return {"ok": True}
 
 
 @api(["GET", "DELETE"])
@@ -262,10 +451,10 @@ def progress(request, body):
     )
     project = request.GET.get("project", "")
     code_paths = {}
+    cur = current_topic(user)
     if project:
-        active = TopicProgress.objects.filter(user=user, status=STATUS_DOING).select_related("topic").order_by("-updated_at").first()
-        if active:
-            code_paths[active.topic_id] = chapters.ensure(user, project, active.topic)
+        if cur:  # editorul deschide la pornire codul lecției curente
+            code_paths[cur.id] = chapters.ensure(user, project, cur)
         code_paths = {**chapters.paths_by_topic(user, project), **code_paths}
     modules = []
     for m in Module.objects.prefetch_related("topics"):
@@ -282,7 +471,7 @@ def progress(request, body):
             for t in m.topics.all()
         ]
         modules.append({"slug": m.slug, "title": m.title, "description": m.description, "topics": topics})
-    return {"profile": StudentProfile.for_user(user).as_dict(), "modules": modules}
+    return {"profile": StudentProfile.for_user(user).as_dict(), "modules": modules, "current": cur.slug if cur else None}
 
 
 @api(["GET"])

@@ -1,0 +1,72 @@
+titlu = "Text, tabla înmulțirii și brad"
+enunt = "Analiza unui text, tabla înmulțirii și un brad din steluțe."
+structura = ["for", "apel:range", "apel:isalpha", "apel:isdigit"]
+indicii = [
+    "Ordinea întrebărilor: propoziția, apoi `n` pentru tablă, apoi înălțimea bradului. Între programe: `print(\"=\" * 30)`.",
+    "La text: `for c in propozitie:` și câte un contor pentru litere, cifre, spații (`c == \" \"`) și restul. La tablă: un `for` în alt `for`, cu `print(f\"{i * j:4}\", end=\"\")` și un `print()` la finalul rândului.",
+    "Bradul: `for i in range(h): print(\" \" * (h - 1 - i) + \"*\" * (2 * i + 1))`. Pentru „Am 2 mere!” trebuie 6 litere, 1 cifră, 2 spații și 1 alt caracter.",
+]
+inceput = '''
+# 1. Analiza unui text (exemplu: așa se scrie numărarea literelor)
+propozitie = input("Propoziția: ")
+litere = 0
+for c in propozitie:
+    if c.isalpha():
+        litere += 1
+print("Litere:", litere)
+# numeri la fel cifrele (c.isdigit()), spațiile (c == " ") și restul caracterelor
+
+print("=" * 30)
+
+# 2. Tabla înmulțirii de la 1 × 1 la n × n, cu un rând de antet
+#    scrii așa: for i in range(1, n + 1):
+#                   for j in range(1, n + 1):
+
+
+# 3. Bradul cu h rânduri, centrat
+#    scrii așa: print(" " * (h - 1 - i) + "*" * (2 * i + 1))
+'''
+solutie = '''
+propozitie = input("Propoziția: ")
+litere = cifre = spatii = altele = 0
+for c in propozitie:
+    if c.isalpha():
+        litere += 1
+    elif c.isdigit():
+        cifre += 1
+    elif c == " ":
+        spatii += 1
+    else:
+        altele += 1
+print(f"Litere: {litere}, cifre: {cifre}, spații: {spatii}, altele: {altele}")
+print("=" * 30)
+
+n = int(input("n (1-10): "))
+print("    " + "".join(f"{j:4}" for j in range(1, n + 1)))
+for i in range(1, n + 1):
+    rand = f"{i:4}"
+    for j in range(1, n + 1):
+        rand += f"{i * j:4}"
+    print(rand)
+print("=" * 30)
+
+h = int(input("Înălțimea: "))
+for i in range(h):
+    print(" " * (h - 1 - i) + "*" * (2 * i + 1))
+'''
+
+[[test]]
+nume = "„Am 2 mere!”, tabla lui 3, brad de 4"
+stdin = "Am 2 mere!\n3\n4\n"
+contine = ["   *\n  ***\n *****\n*******"]
+regex = ['\b6\b.*\b1\b.*\b2\b.*\b1\b', '^\s*(2\s+)?2\s+4\s+6\s*$', '^\s*(3\s+)?3\s+6\s+9\s*$', '^=+$']
+regex_text = "numărătorile (6 litere, 1 cifră, 2 spații, 1 alt caracter), rândurile tablei și separatorul de `=`"
+regex_de_ce = "Verific numărătorile pentru „Am 2 mere!” (6, 1, 2, 1, în ordinea litere, cifre, spații, altele, pe același rând), rândurile 2 4 6 și 3 6 9 ale tablei și rândul de `=` dintre programe."
+de_ce = "Bradul de înălțime 4 are pe rândul i (de la 0) `h - 1 - i` spații și `2 * i + 1` steluțe."
+
+[[test]]
+nume = "tabla lui 5, brad de 2"
+stdin = "abc 123\n5\n2\n"
+contine = [" *\n***"]
+regex = ['^\s*(5\s+)?5\s+10\s+15\s+20\s+25\s*$']
+regex_text = "rândul 5 10 15 20 25 al tablei"

@@ -1,0 +1,61 @@
+titlu = "Convertorul de temperatură și timp"
+enunt = "Convertor: nume, grade Celsius în Fahrenheit, secunde în ore, minute și secunde."
+structura = ["impartire_intreaga", "modulo", "apel:float", "apel:len", "apel:str"]
+indicii = [
+    "Ordinea întrebărilor: numele, temperatura în Celsius, apoi numărul de secunde. Tot ce vine din `input()` e text și trebuie convertit.",
+    "Pentru virgulă: `float(text.replace(\",\", \".\"))`. Pentru o zecimală: `f\"{fahrenheit:.1f}\"`. Orele sunt `secunde // 3600`, iar `secunde % 3600` e ce rămâne pentru minute și secunde.",
+    "Cu 3725 de secunde: `3725 // 3600` dă 1 oră, rămân `3725 % 3600` = 125 secunde, adică `125 // 60` = 2 minute și `125 % 60` = 5 secunde. Cifrele: `len(str(secunde))`.",
+]
+inceput = '''
+# 1. Numele, curățat (exemplu: așa se scrie)
+nume = input("Cum te numești? ").strip().title()
+print(f"Salut, {nume}!")
+
+# 2. Temperatura în Celsius (poate avea virgulă) → Fahrenheit, cu o zecimală
+#    scrii așa: celsius = float(input("Temperatura în °C: ").replace(",", "."))
+
+
+# 3. Un număr de secunde → „X ore, Y minute și Z secunde”
+#    scrii așa: ore = secunde // 3600
+
+
+# 4. Câte cifre are numărul de secunde
+#    scrii așa: print(len(str(secunde)))
+'''
+solutie = '''
+nume = input("Cum te numești? ").strip().title()
+celsius = float(input("Temperatura în °C: ").replace(",", "."))
+fahrenheit = celsius * 9 / 5 + 32
+print(f"Salut, {nume}! {celsius} °C înseamnă {fahrenheit:.1f} °F.")
+
+secunde = int(input("Câte secunde? "))
+ore = secunde // 3600
+rest = secunde % 3600
+minute = rest // 60
+sec = rest % 60
+print(f"{secunde} secunde = {ore} ore, {minute} minute și {sec} secunde")
+print(f"Numărul {secunde} are {len(str(secunde))} cifre.")
+'''
+
+[[test]]
+nume = "nume cu spații, temperatură cu virgulă"
+stdin = "  ana popescu \n36,6\n3725\n"
+contine = ["Ana Popescu", "97.9"]
+regex = ['\b1 or[ae],? 2 minute,? (si )?5 secunde', '\b4\b']
+regex_text = "„1 ore, 2 minute și 5 secunde” și numărul de cifre (4)"
+regex_de_ce = "3725 de secunde înseamnă 1 oră, 2 minute și 5 secunde, iar numărul 3725 are 4 cifre."
+
+[[test]]
+nume = "temperatură negativă"
+stdin = "Ion\n-5\n59\n"
+contine = ["23.0"]
+regex = ['\b0 or[ae],? 0 minute,? (si )?59 secunde']
+regex_text = "„0 ore, 0 minute și 59 secunde”"
+regex_de_ce = "59 de secunde înseamnă 0 ore, 0 minute și 59 de secunde."
+
+[[test]]
+nume = "o oră fixă"
+stdin = "Maria\n100\n3600\n"
+contine = ["212.0"]
+regex = ['\b1 or[ae],? 0 minute,? (si )?0 secunde']
+regex_text = "„1 ore, 0 minute și 0 secunde”"

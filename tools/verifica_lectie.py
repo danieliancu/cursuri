@@ -38,6 +38,9 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tutor.iesire import HOOK, compare  # noqa: E402 — comune cu verificarea exercițiilor
+
 IMAGE = "pytutor-sandbox:2"
 TIMEOUT = 60
 # Pentru git în blocurile ```bash: autorul commit-urilor din lecții.
@@ -55,19 +58,6 @@ _SETUP_RE = re.compile(r"<!--\s*pregatire:\s*(.+?)\s*-->")
 # generate la rulare, nu fac parte din proiectul pe care îl scrie elevul
 IGNORE = shutil.ignore_patterns("__pycache__", "db.sqlite3", ".pytest_cache", ".mypy_cache",
                                 ".ruff_cache", "staticfiles", "*.pyc")
-
-# input() afișează și textul „tastat”, ca output-ul să arate ca în terminal.
-HOOK = '''import builtins, sys
-def _input(prompt=""):
-    print(prompt, end="", flush=True)
-    line = sys.stdin.readline()
-    if not line:
-        raise EOFError("EOF when reading a line")
-    line = line.rstrip("\\n")
-    print(line, flush=True)
-    return line
-builtins.input = _input
-'''
 
 _FENCE_RE = re.compile(r"^```(\w*)\s*$")
 _DIRECTIVE_RE = re.compile(r"^<!--\s*([\w-]+)\s*:?\s*(.*?)\s*-->$")
@@ -160,16 +150,6 @@ def run_shell(workdir: Path, code: str) -> str:
 
 def normalize(text: str) -> str:
     return _HASH_RE.sub("<hash>", _DURATION_RE.sub("0.00s", text))
-
-
-def compare(expected: str, actual: str) -> bool:
-    exp, act = expected.rstrip("\n").splitlines(), actual.rstrip("\n").splitlines()
-    if not any(s.startswith("Traceback") for s in exp):
-        return [s.rstrip() for s in exp] == [s.rstrip() for s in act]
-    if not exp or not act or exp[-1].rstrip() != act[-1].rstrip():
-        return False
-    it = iter(s.rstrip() for s in act)
-    return all(any(s.rstrip() == a for a in it) for s in exp)
 
 
 def project_diff(workdir: Path, expected: Path) -> list[str]:

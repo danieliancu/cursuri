@@ -15,6 +15,9 @@ class StudentProfile(models.Model):
     weaknesses = models.TextField("de lucrat", blank=True, default="")
     # [{"topic": "list comprehensions", "status": "învățat" | "în lucru" | "de învățat"}]
     topics = models.JSONField("subiecte", default=list, blank=True)
+    # Ultima lecție deschisă de elev (oricare, și una deja învățată): sumarul, editorul și tutorele pornesc de aici.
+    current_topic = models.ForeignKey("Topic", on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="+", verbose_name="lecția deschisă")
     updated_at = models.DateTimeField("actualizat", auto_now=True)
 
     class Meta:
@@ -124,6 +127,26 @@ class TopicEvidence(models.Model):
         ordering = ["-created_at"]
         verbose_name = "dovadă de lucru"
         verbose_name_plural = "dovezi de lucru"
+
+
+class ExerciseAttempt(models.Model):
+    """Încercările unui elev la exercițiul fix al unei lecții (tutor/exercitii/): pentru treptele de indiciu."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="exercise_attempts")
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="attempts")
+    failed = models.PositiveIntegerField("încercări greșite", default=0)
+    hints_shown = models.PositiveIntegerField("indicii văzute", default=0)
+    solved_at = models.DateTimeField("rezolvat", null=True, blank=True)
+    # codul de la ultima verificare: dacă următorul e cu totul altul, treptele de indiciu o iau de la capăt
+    last_code = models.TextField("ultimul cod verificat", blank=True, default="")
+    # „Nu lucrez la exercițiul lecției”: fișierul capitolului e verificat de tutore (sarcina lui), nu de teste
+    skipped = models.BooleanField("lucrează la altceva", default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "încercare la exercițiu"
+        verbose_name_plural = "încercări la exerciții"
+        constraints = [models.UniqueConstraint(fields=["user", "topic"], name="unique_attempt_per_topic")]
 
 
 class Conversation(models.Model):

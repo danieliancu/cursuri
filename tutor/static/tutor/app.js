@@ -459,6 +459,22 @@
     }
   }
 
+  // Plasa de siguranță din balonul exercițiului fix: elevul lucra la altceva în fișierul capitolului.
+  // Fișierul nu mai e verificat cu testele lecției, iar tutorele (modelul mic) îl verifică după sarcina elevului.
+  document.addEventListener("click", async (e) => {
+    const link = e.target.closest('a[href="#nu-e-exercitiul"]');
+    if (!link) return;
+    e.preventDefault();
+    const path = state.openNote?.path || state.active;
+    if (!path || state.chatBusy) return;
+    try {
+      await api(P("exercitiu/sari"), { method: "POST", body: { path } });
+    } catch (err) { return toast(err.message); }
+    await receiveNotes(path, []);
+    toast("Bine: fișierul nu mai e verificat cu testele lecției. „Exercițiu nou” îți dă înapoi exercițiul lecției.", 5000);
+    sendMessage("Nu lucrez la exercițiul lecției, ci la altceva. Verifică programul meu după ce am vrut să fac.", { mode: "check" });
+  });
+
   // Tutorele a pus (sau a șters) baloane: le arătăm fără să deschidem vreunul.
   async function receiveNotes(path, notes) {
     if (state.openNote?.path === path) closeNote();
@@ -650,8 +666,9 @@
           // o comandă (startproject, startapp, makemigrations...) poate crea fișiere: le arătăm în Explorer
           if (state.treeStale) { state.treeStale = false; loadTree().catch(() => {}); }
           if (state.runStart != null) {
-            if (state.checkAfterRun) checkAfterRun();
-            else suggestAfterRun(d.returncode, termOut.textContent.slice(state.runStart));
+            await errorNote(d);
+            if (state.checkAfterRun) checkAfterRun(d);
+            else if (!d.eroare) suggestAfterRun(d.returncode, termOut.textContent.slice(state.runStart));
           }
           state.runStart = null;
           state.checkAfterRun = false;
@@ -684,15 +701,95 @@
   }
   function runActive() {
     const t = activeTab();
-    if (t && /\.py$/i.test(t.path)) runCommand(`python ${quote(t.path)}`, { check: true });
+    if (!t || !/\.py$/i.test(t.path)) return;
+    state.runPath = t.path;
+    runCommand(`python ${quote(t.path)}`, { check: true });
   }
-  // Tutorele vede ultima rulare în contextul fiecărui mesaj (comandă, cod de ieșire, output),
-  // deci ajunge un mesaj scurt; elevul nu trebuie să copieze nimic.
-  function checkAfterRun() {
+  // După „Rulează și verifică”, în ordinea costului:
+  // 1. fișierul capitolului are exercițiu fix → verdictul îl dă codul (testele lecției), AI-ul mic doar îl formulează;
+  // 2. programul a crăpat cu o eroare cunoscută → balonul de pe rândul ei o explică, fără AI;
+  // 3. altfel tutorele (modelul mic, cu context redus) se uită la rezultat. Vede ultima rulare în context,
+  //    deci ajunge un mesaj scurt; elevul nu trebuie să copieze nimic.
+  async function checkAfterRun(d) {
     if (state.chatBusy) return nudge(step("check"));  // tutorele încă răspunde: lăsăm butonul la îndemână
-    sendMessage("Am rulat codul. Uită-te la rezultat și spune-mi dacă e bine și ce urmează.");
+    if (state.runPath?.startsWith("capitole/") && await checkExercise(state.runPath)) return;
+    if (d.eroare) return;  // explicația e deja în balonul de pe rând
+    sendMessage("Am rulat codul. Uită-te la rezultat și spune-mi dacă e bine și ce urmează.", { mode: "check" });
   }
   $("#runBtn").addEventListener("click", runActive);
+
+  // ------------------------------------------------------------------ Erori explicate (fără AI), în balon
+  // Eroarea cunoscută (tutor/erori.py) devine un balon pe rândul ei, în fișierul din traceback. Balonul nu se
+  // salvează pe server: la următoarea rulare fără eroare dispare, iar un balon al tutorelui îl înlocuiește.
+  async function errorNote(d) {
+    const e = d.eroare;
+    const own = state.errorNote;  // balonul de eroare pus la rularea anterioară
+    if (!e) {
+      if (own && state.notes[own]?.some((n) => n.local)) await receiveNotes(own, []);
+      state.errorNote = null;
+      return;
+    }
+    // fișierul din traceback, relativ la proiect (în container: /work/<proiect>/..., local: .../<proiect>/...)
+    const fromTrace = e.fisier ? e.fisier.replace(/\\/g, "/").split(`/${state.project}/`).pop() : null;
+    const ran = (d.command.match(/^\s*python3?\s+"?([^"\s]+\.py)/) || [])[1];
+    const path = fromTrace && treeHas(fromTrace) ? fromTrace : ran;
+    if (!path) return;
+    if (own && own !== path && state.notes[own]?.some((n) => n.local)) await receiveNotes(own, []);
+    const parts = [e.explicatie];
+    if (e.lectie) {
+      const where = e.lectie.sectiune ? ` — „${e.lectie.sectiune}”` : ` (${e.lectie.titlu})`;
+      parts.push(`[Recitește: lecția ${e.lectie.numar}${where}](/progres/#${e.lectie.slug})`);
+    }
+    parts.push("[Tot nu e clar? Întreabă AI](#intreaba-ai)");
+    state.errorNote = path;
+    await receiveNotes(path, [{ line: e.rand || 1, end_line: e.rand || 1, title: e.titlu, text: parts.join("\n\n"), local: true }]);
+  }
+  const treeHas = (path) => {
+    const walk = (nodes) => nodes.some((n) => n.path === path || (n.children && walk(n.children)));
+    return walk(treeData);
+  };
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest('a[href="#intreaba-ai"]')) return;
+    e.preventDefault();
+    step("error").click();  // „Explică eroarea”, cu output-ul din terminal atașat
+  });
+
+  // ------------------------------------------------------------------ Exercițiul fix al lecției
+  // Fișierul capitolului e verificat de cod cât timp exercițiul fix e de rezolvat (decide serverul);
+  // altfel îl verifică modelul mic.
+  // Întoarce false dacă fișierul n-are exercițiu fix (atunci verifică tutorele AI).
+  async function checkExercise(path) {
+    setBusy(true);
+    let r;
+    try {
+      r = await api(P("exercitiu/verifica"), { method: "POST", body: { path } });
+    } catch (e) {
+      setBusy(false);
+      toast(e.message);
+      return true;
+    }
+    setBusy(false);
+    if (!r.exercitiu) return false;
+    state.errorNote = null;  // balonul verificării îl înlocuiește pe cel de eroare (e salvat pe server)
+    openComposer();
+    addMsg("user", "Am rulat programul. Verifică exercițiul.");
+    // detaliile (testul, ce trebuia, output-ul, indiciul) sunt în balonul de pe rând; aici doar fraza tutorelui
+    addMsg("assistant", r.mesaj);
+    scrollChat(true);
+    let learned = false;
+    for (const ev of r.events || []) {
+      if (ev.type === "annotations") await receiveNotes(ev.path, ev.notes);
+      else if (ev.type === "progress") {
+        learned ||= ev.status === "învățat";
+        toast(`Progres salvat: ${ev.topic} · ${ev.status}`);
+        loadCourse().catch(() => {});
+      }
+    }
+    if (r.verdict.rezultat === "corect") nudge(step("next"));
+    else nudge($("#runBtn"));
+    return true;
+  }
+
 
   termInput.addEventListener("keydown", async (e) => {
     if (e.key === "ArrowUp" && !state.termRunning && state.termHistory.length) {
@@ -888,10 +985,39 @@
   new ResizeObserver(updateQuickArrows).observe(quick);
   $("#quickLeft").addEventListener("click", () => quick.scrollBy({ left: -quick.clientWidth * 0.7, behavior: "smooth" }));
   $("#quickRight").addEventListener("click", () => quick.scrollBy({ left: quick.clientWidth * 0.7, behavior: "smooth" }));
-  $$("#quick button").forEach((b) => b.addEventListener("click", () => {
+  $$("#quick button").forEach((b) => b.addEventListener("click", async () => {
+    if (b.dataset.step === "check") {  // verificare de rutină: exercițiul fix sau modelul mic, ca după rulare
+      if (state.chatBusy) return;
+      await saveAll();
+      if (state.active?.startsWith("capitole/") && await checkExercise(state.active)) return;
+      return sendMessage(b.dataset.quick, { mode: "check" });
+    }
+    if (b.dataset.step === "next" || b.dataset.step === "exercise") {
+      if (state.chatBusy) return;
+      if (await localStep(b.dataset.step === "next" ? "urmator" : "exercitiu", b.dataset.quick)) return;
+    }
     if (b.dataset.attachTerminal && termOut.textContent.trim()) state.ctx.terminal = termOut.textContent.slice(-6000);
     sendMessage(b.dataset.quick);
   }));
+
+  // „Următorul pas” și „Exercițiu nou” fără AI, când răspunsul se știe din curriculum și din exercițiile fixe
+  // (serverul răspunde `ai: true` când nu se poate, iar atunci întreabă tutorele, ca înainte).
+  async function localStep(tip, text) {
+    let r;
+    try {
+      r = await api(P("pas"), { method: "POST", body: { tip, text, path: state.active } });
+    } catch { return false; }
+    if (r.ai) return false;
+    clearNudge();
+    openComposer();
+    addMsg("user", text);
+    addMsg("assistant", r.mesaj);
+    scrollChat(true);
+    if (r.path) await openChapter(r.path, r.topic);
+    loadCourse().catch(() => {});
+    if (r.path?.endsWith(".py")) nudge($("#runBtn"));
+    return true;
+  }
 
   // ------------------------------------------------------------------ Pasul următor
   // Un singur element luminează discret ca să-i arate elevului ce urmează: cod modificat → „Rulează”,
@@ -958,7 +1084,8 @@
     $$("#aiStatus, #tutorPill .status-dot").forEach((d) => d.classList.toggle("busy", busy));
   }
 
-  async function sendMessage(text) {
+  // `mode: "check"`: verificarea de rutină după rulare (modelul mic, context redus).
+  async function sendMessage(text, { mode = "chat" } = {}) {
     text = (text ?? chatInput.value).trim();
     if (!text || state.chatBusy) return;
     await saveAll();
@@ -996,7 +1123,7 @@
       const res = await fetch(P("chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
-        body: JSON.stringify({ message: text, context }),
+        body: JSON.stringify({ message: text, context, mode }),
       });
       if (res.status === 401) toLogin();
       if (!res.ok || !res.body) {
@@ -1083,11 +1210,12 @@
         await reloadChangedFiles([...changed]);
         toast("Tutorele a creat/modificat: " + [...changed].join(", "));
       }
-      if (chapter) await openChapter(chapter.path, chapter.topic);
+      // Tutorele a început altă lecție: n-o deschidem singuri, elevul trece la ea când vrea, cu „Următorul pas”.
+      if (chapter) toast(`Tutorele propune: ${chapter.topic}. Apasă „Următorul pas” când vrei să treci la ea.`, 6000);
       for (const ev of pendingNotes) await receiveNotes(ev.path, ev.notes);
       // la final, ca reîncărcarea fișierelor modificate de tutore să nu-l suprascrie
       suggestAfterReply({
-        text: md, failed, learned,
+        text: md, failed, learned: learned || Boolean(chapter),
         task: Boolean(chapter || changed.size),
         notes: pendingNotes.some((ev) => ev.notes.length),
       });
@@ -1153,6 +1281,9 @@
     try {
       const r = await api(P("chapter"), { method: "POST", body: { topic: t.slug } });
       shownLesson = t.slug;
+      // o lecție deja învățată nu devine „pasul activ”: modulul ei rămâne deschis și editorul rămâne pe codul ei
+      openModules.add(t.module.slug);
+      justPicked = true;
       // Lecțiile Django n-au fișier de capitol: se lucrează în proiectul Django al elevului (are manage.py;
       // lecțiile îl numesc „blog”, dar numele poate fi oricare).
       if (r.path) await openChapter(r.path, t.title);
@@ -1163,7 +1294,7 @@
   }
   async function loadCourse() {
     const d = await api("/api/progress" + (state.project ? "?project=" + encodeURIComponent(state.project) : ""));
-    renderCourse(d.modules);
+    renderCourse(d.modules, d.current);
   }
 
   // Căutarea în lecții: după titlu și descriere, fără să conteze diacriticele și literele mari.
@@ -1185,16 +1316,23 @@
       det.open = q ? any : Boolean(det.dataset.open);
     });
   }
-  function renderCourse(modules) {
+  const openModules = new Set();  // modulele deschise în sumar (slug)
+  let justPicked = false;         // elevul a ales o lecție: următoarea randare nu-i mută editorul
+  const readLessons = () => {
+    try { return new Set(JSON.parse(store.get("pt-read-lessons", "[]"))); } catch { return new Set(); }
+  };
+  function renderCourse(modules, currentSlug) {
     const box = $("#course");
     box.innerHTML = "";
     const all = modules.flatMap((m) => m.topics.map((t) => ({ ...t, module: m })));
+    const num = new Map(all.map((t, i) => [t.slug, i + 1]));  // numărul lecției în curriculum
     const done = all.filter((t) => t.status === "învățat").length;
     const doing = all.filter((t) => t.status === "în lucru").length;
     $("#courseCount").textContent = `${done}/${all.length}`;
     // Pasul activ: ultimul subiect trecut „în lucru” de tutore, altfel primul neînvățat.
     const doingTopics = all.filter((t) => t.status === "în lucru").sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
-    const current = doingTopics[0] || all.find((t) => t.status !== "învățat");
+    // Lecția curentă: ultima deschisă de elev (serverul o ține minte), altfel pasul următor din curriculum.
+    const current = all.find((t) => t.slug === currentSlug) || doingTopics[0] || all.find((t) => t.status !== "învățat");
     const changed = new Set(prevStatus ? all.filter((t) => prevStatus[t.slug] !== t.status).map((t) => t.slug) : []);
     prevStatus = Object.fromEntries(all.map((t) => [t.slug, t.status]));
 
@@ -1210,8 +1348,14 @@
     modules.forEach((m) => {
       const det = document.createElement("details");
       det.className = "course-module";
-      det.open = (!!current && current.module === m) || m.topics.some((t) => changed.has(t.slug));
+      det.open = openModules.has(m.slug) || (!!current && current.module === m) || m.topics.some((t) => changed.has(t.slug));
+      if (det.open) openModules.add(m.slug);
       det.dataset.open = det.open ? "1" : "";  // starea de dinaintea căutării
+      // ce deschide sau închide elevul rămâne așa și după ce sumarul se redesenează
+      det.addEventListener("toggle", () => {
+        if (courseSearch.querySelector("input").value.trim()) return;  // căutarea deschide temporar
+        if (det.open) openModules.add(m.slug); else openModules.delete(m.slug);
+      });
       const n = m.topics.filter((t) => t.status === "învățat").length;
       const sum = document.createElement("summary");
       const st = document.createElement("span");
@@ -1228,16 +1372,16 @@
       m.topics.forEach((t) => {
         const row = document.createElement("div");
         row.className = "course-topic" + (current && t.slug === current.slug ? " current" : "") + (changed.has(t.slug) ? " just-changed" : "");
-        row.dataset.search = fold(t.title + " " + (t.summary || ""));
+        row.dataset.search = fold(`${num.get(t.slug)} ${t.title} ${t.summary || ""}`);
         const a = document.createElement("button");
         a.className = "course-link";
         a.title = (t.summary || t.title) + " — lucrează la lecția asta (îi deschide codul)";
-        a.addEventListener("click", () => selectLesson(t));
+        a.addEventListener("click", () => selectLesson({ ...t, module: m }));
         const dot = document.createElement("span");
         dot.className = "course-dot " + (STATUS_CLS[t.status] || "");
         if (t.status === "învățat") dot.innerHTML = icon("check");
         const tt = document.createElement("span");
-        tt.textContent = t.title;
+        tt.textContent = `${num.get(t.slug)}. ${t.title}`;  // același număr ca în capitole/NN-... și „lecția N”
         a.append(dot, tt);
         row.appendChild(a);
         const book = document.createElement("a");
@@ -1246,6 +1390,9 @@
         book.title = "Citește lecția";
         book.setAttribute("aria-label", "Lecția: " + t.title);
         book.innerHTML = icon("book-open");
+        // Prima dată la un capitol: iconul clipește până deschizi lecția (progress.js o notează ca citită).
+        if (current && t.slug === current.slug && !readLessons().has(t.slug)) book.classList.add("read-flash");
+        book.addEventListener("click", () => book.classList.remove("read-flash"));
         row.appendChild(book);
         list.appendChild(row);
       });
@@ -1256,12 +1403,14 @@
     if (hadFocus) courseSearch.querySelector("input").focus();
     else box.querySelector(".course-topic.current")?.scrollIntoView({ block: "nearest" });
 
-    // Codul din editor urmează lecția activă: când se schimbă lecția (sau la pornire), îi deschidem codul.
-    if (current?.code_path && current.slug !== shownLesson) {
+    // Doar la pornire editorul deschide codul lecției active. După aceea nu se mută singur (nici când tutorele
+    // bifează sau începe o lecție): elevul decide, din sumar sau cu „Următorul pas”.
+    if (current?.code_path && shownLesson === null) {
       shownLesson = current.slug;
       const folder = current.code_path.split("/").slice(0, -1).join("/") + "/";
-      if (!(state.active || "").startsWith(folder)) openChapter(current.code_path);
+      if (!justPicked && !(state.active || "").startsWith(folder)) openChapter(current.code_path);
     }
+    justPicked = false;
   }
 
   // ------------------------------------------------------------------ Proiecte
@@ -1282,6 +1431,7 @@
     state.project = name;
     store.set("pt-project", name);
     $("#projectSelect").value = name;
+    shownLesson = null;  // în proiectul nou, editorul deschide codul lecției active
     state.tabs = [];
     state.active = null;
     state.termSince = 0;

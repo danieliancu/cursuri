@@ -59,13 +59,19 @@ def ensure(user, stream) -> None:
     name = container_name(user)
     # Container creat dintr-o imagine mai veche (altă versiune sau aceeași etichetă reconstruită):
     # îl refacem; pachetele instalate de elev cu pip se pierd.
+    # La fel dacă montează alt folder decât cel de acum (ex. proiectul PyTutor a fost mutat): altfel terminalul
+    # ar rula fișierele din locația veche.
     current = _quiet(["docker", "image", "inspect", "-f", "{{.Id}}", settings.PYTUTOR_SANDBOX_IMAGE]).stdout.strip()
-    used = _quiet(["docker", "inspect", "-f", "{{.Image}}", name])
-    if used.returncode == 0 and used.stdout.strip() != current:
-        remove(user)
+    mount = workspace.user_root(user).resolve()
+    used = _quiet(["docker", "inspect", "-f", '{{.Image}}|{{range .Mounts}}{{if eq .Destination "/work"}}{{.Source}}{{end}}{{end}}', name])
+    if used.returncode == 0:
+        image, _, source = used.stdout.strip().partition("|")
+        # doar o cale de pe acest calculator se poate compara (Docker Desktop poate raporta și căi interne)
+        moved = bool(source) and Path(source).is_absolute() and Path(source).resolve() != mount
+        if image != current or moved:
+            remove(user)
     state = _quiet(["docker", "inspect", "-f", "{{.State.Running}}", name])
     if state.returncode != 0:
-        mount = workspace.user_root(user).resolve()
         args = [
             "docker", "run", "-d",
             "--name", name,

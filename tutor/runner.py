@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 
-from . import sandbox, workspace
+from . import erori, iesire, sandbox, workspace
 
 MAX_BUFFER = 300_000  # caractere păstrate per sesiune
 
@@ -43,6 +43,8 @@ class Session:
         self.command = ""
         self.returncode: int | None = None
         self.started_at = 0.0
+        self.command_start = 0  # offset-ul absolut de unde începe output-ul ultimei comenzi
+        self.explained: tuple[int, dict | None] | None = None  # (command_start, explicația erorii)
 
     @property
     def end(self) -> int:
@@ -136,6 +138,7 @@ def run(user, project: str, command: str) -> None:
         raise workspace.WorkspaceError("Rulează deja o comandă. Oprește-o mai întâi.")
     sess.busy = True
     sess.append(f"\n$ {command}\n")
+    sess.command_start = sess.end
     sess.command = command
     sess.returncode = None
     sess.started_at = time.time()
@@ -180,7 +183,7 @@ def output(user, project: str, since: int = 0) -> dict:
     sess = get(user, project)
     with sess.lock:
         start = max(since, sess.base)
-        return {
+        out = {
             "text": sess.text[start - sess.base:],
             "next": sess.end,
             "reset": since < sess.base,
@@ -188,26 +191,62 @@ def output(user, project: str, since: int = 0) -> dict:
             "command": sess.command,
             "returncode": sess.returncode,
         }
+    if not sess.busy:
+        out["eroare"] = explain_last(sess)
+    return out
 
 
-def run_capture(user, project: str, path: str, stdin_text: str = "", timeout: int = 20) -> tuple[int | None, str]:
+def explain_last(sess: Session) -> dict | None:
+    """Explicația în română a erorii cu care s-a oprit ultima comandă `python ...` (calculată o dată)."""
+    if sess.busy or sess.returncode in (None, 0) or not re.match(r"^\s*(python3?|py)\s", sess.command):
+        return None
+    if sess.explained and sess.explained[0] == sess.command_start:
+        return sess.explained[1]
+    with sess.lock:
+        text = sess.text[max(sess.command_start - sess.base, 0):]
+    result = erori.explica(text)
+    sess.explained = (sess.command_start, result)
+    return result
+
+
+HOOK_DIR = ".pytutor"  # în folderul elevului, lângă proiecte (nu e un nume valid de proiect, deci nu apare în listă)
+
+
+def _hook_dir(user) -> str:
+    """Scrie `sitecustomize.py` cu ecoul lui input() (ca în lecții) și întoarce folderul lui."""
+    d = workspace.user_root(user) / HOOK_DIR
+    d.mkdir(exist_ok=True)
+    (d / "sitecustomize.py").write_text(iesire.HOOK, encoding="utf-8")
+    return str(d)
+
+
+def run_capture(user, project: str, path: str, stdin_text: str = "", timeout: int = 20,
+                echo_input: bool = False) -> tuple[int | None, str]:
     """Rulează `python <path>` separat de terminalul elevului (pentru verificarea făcută de tutore).
 
     Întoarce (cod de ieșire sau None la timeout, output). Folosește același mediu ca terminalul:
-    containerul elevului sau, în mod local, interpretorul aplicației.
+    containerul elevului sau, în mod local, interpretorul aplicației. Cu `echo_input`, textul primit de
+    input() apare în output, ca în terminal (așa sunt scrise output-urile din lecții și exerciții).
     """
     workspace.safe_path(user, project, path)  # validează calea
+    env = _env()
     if sandbox.enabled():
         sandbox.ensure(user, lambda args, intro: subprocess.run(args, capture_output=True).returncode)
-        args = sandbox.exec_args(user, project, f"timeout {timeout} python {shlex.quote(path)}")
+        prefix = ""
+        if echo_input:
+            _hook_dir(user)
+            prefix = f"PYTHONPATH=/work/{HOOK_DIR} "
+        args = sandbox.exec_args(user, project, f"{prefix}timeout {timeout} python {shlex.quote(path)}")
         cwd, shell = None, False
     else:
         args = f"{_PY} {subprocess.list2cmdline([path])}"
         cwd, shell = workspace.project_dir(user, project), True
+        if echo_input:
+            env["PYTHONPATH"] = _hook_dir(user)
     try:
         res = subprocess.run(
             args, cwd=cwd, shell=shell, input=(stdin_text or "").encode("utf-8"),
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=_env(), timeout=timeout + 5,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, timeout=timeout + 5,
         )
     except subprocess.TimeoutExpired as e:
         out = (e.stdout or b"").decode("utf-8", errors="replace")

@@ -1,0 +1,53 @@
+titlu = "Calculatorul de călătorie"
+enunt = "Calculatorul de călătorie: 450 km, 6.5 l/100 km, 7.45 lei litrul, 3 persoane."
+structura = ["impartire_intreaga", "modulo", "apel:round"]
+indicii = [
+    "Litrii consumați sunt `distanta * consum / 100`; costul total e litrii înmulțiți cu prețul unui litru.",
+    "Durata în minute e `distanta / viteza * 60`, apoi `round(...)`. Din minutele totale, orele sunt `minute // 60`, iar ce rămâne e `minute % 60`.",
+    "Cu valorile din enunț (450 km, 6.5 l/100 km, 7.45 lei, 3 persoane) trebuie să obții 29.25 litri, 217.91 lei, 72.64 lei de persoană și 5 ore și 38 de minute.",
+]
+inceput = '''
+# 1. Variabilele, cu valorile din enunț (exemplu: așa se scrie)
+distanta = 450
+consum = 6.5
+pret_litru = 7.45
+persoane = 3
+
+# 2. Câți litri se consumă, costul total și costul pe persoană (2 zecimale)
+#    scrii așa: litri = distanta * consum / 100
+
+
+# 3. Durata drumului în minute (rotunjită), apoi ore și minute cu // și %
+#    scrii așa: minute_total = round(distanta / 80 * 60)
+
+
+# 4. Afișează fiecare rezultat pe un rând, cu text
+#    scrii așa: print("Litri consumați:", litri)
+'''
+solutie = '''
+distanta = 450
+consum = 6.5
+pret_litru = 7.45
+persoane = 3
+
+litri = distanta * consum / 100
+cost_total = litri * pret_litru
+cost_persoana = round(cost_total / persoane, 2)
+
+minute_total = round(distanta / 80 * 60)
+ore = minute_total // 60
+minute = minute_total % 60
+
+print("Litri consumați:", litri)
+print("Cost total:", round(cost_total, 2), "lei")
+print("Cost pe persoană:", cost_persoana, "lei")
+print("Durata:", ore, "ore și", minute, "minute")
+'''
+
+[[test]]
+nume = "valorile din enunț"
+contine = ["29.25", "217.91", "72.64"]
+regex = ['\b5 ore si 38 (de )?minute']
+regex_text = "5 ore și 38 minute"
+regex_de_ce = "Durata drumului (450 km cu 80 km/h, rotunjită la minute) trebuie afișată ca „5 ore și 38 minute”."
+de_ce = "Testul folosește valorile din enunț: 450 km, 6.5 litri la 100 km, 7.45 lei litrul și 3 persoane."

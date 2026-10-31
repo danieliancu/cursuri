@@ -345,7 +345,7 @@ print(varsta + 1)
 
 În `capitole/03-numere/numere.py`, scrie un calculator de călătorie:
 
-1. variabile pentru distanța în km (de exemplu `450`), consumul mașinii în litri la 100 km (`6.5`), prețul unui litru de benzină (`7.45`) și numărul de persoane care împart costul;
+1. variabile pentru distanța în km (`450`), consumul mașinii în litri la 100 km (`6.5`), prețul unui litru de benzină (`7.45`) și numărul de persoane care împart costul (`3`); folosește exact aceste valori, ca **Rulează și verifică** să-ți poată confirma rezultatele;
 2. calculează câți litri se consumă, costul total și costul pe persoană, rotunjit la 2 zecimale;
 3. viteza medie e de 80 km/h: calculează durata drumului în minute, rotunjită la minute întregi cu `round()`, apoi afișeaz-o ca „X ore și Y minute”, cu `//` și `%`;
 4. afișează rezultatele cu `print()`, fiecare pe un rând, cu text explicativ.

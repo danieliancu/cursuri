@@ -1,0 +1,54 @@
+titlu = "Adresa curățată"
+enunt = "Curăță adresa din variabila adresa_bruta și împarte-o în stradă și oraș."
+structura = ["apel:split", "apel:title", "apel:upper"]
+indicii = [
+    "`text.split()` fără argument taie după orice grup de spații și scapă de cele de la margini; `\" \".join(...)` lipește bucățile la loc cu un singur spațiu.",
+    "`adresa.split(\",\")` dă o listă cu două bucăți: `bucati[0]` e strada, `bucati[1]` orașul. Curăță fiecare cu `.strip()`, apoi folosește `.title()` și `.upper()`.",
+    "Pentru inițiale: `parti = oras.split(\"-\")`, apoi `parti[0][0] + \".\" + parti[1][0] + \".\"`. Lungimea e `len(adresa)`, iar poziția lui „nr.” e `adresa.find(\"nr.\")`.",
+]
+inceput = '''
+adresa_bruta = "  str. memorandumului   nr. 28 ,  CLUJ-napoca  "
+
+# 1. Adresa curățată: fără spații la margini și fără spații duble (exemplu: așa se scrie)
+adresa = " ".join(adresa_bruta.split())
+print(adresa)
+
+# 2. Strada și orașul, despărțite după virgulă și curățate
+#    scrii așa: bucati = adresa.split(",")
+#               strada = bucati[0].strip()
+
+
+# 3. Strada cu fiecare cuvânt cu literă mare, orașul doar cu litere mari
+#    scrii așa: print(strada.title())
+
+
+# 4. Câte caractere are adresa curățată și pe ce poziție apare "nr."
+#    scrii așa: print(len(adresa))
+
+
+# 5. Inițialele orașului, de forma C.N.
+#    scrii așa: parti = oras.upper().split("-")
+'''
+solutie = '''
+adresa_bruta = "  str. memorandumului   nr. 28 ,  CLUJ-napoca  "
+
+adresa = " ".join(adresa_bruta.split())
+bucati = adresa.split(",")
+strada = bucati[0].strip()
+oras = bucati[1].strip()
+
+print("Strada:", strada.title())
+print("Oraș:", oras.upper())
+print("Caractere:", len(adresa))
+print("Poziția lui nr.:", adresa.find("nr."))
+
+parti = oras.upper().split("-")
+print("Inițiale:", parti[0][0] + "." + parti[1][0] + ".")
+'''
+
+[[test]]
+nume = "adresa din enunț"
+contine = ["Str. Memorandumului Nr. 28", "CLUJ-NAPOCA", "C.N."]
+regex = ['\b40\b', '\b20\b']
+regex_text = "lungimea adresei curățate (40) și poziția lui „nr.” (20)"
+regex_de_ce = "Adresa curățată (`str. memorandumului nr. 28 , CLUJ-napoca`) are 40 de caractere, iar „nr.” apare pe poziția 20."

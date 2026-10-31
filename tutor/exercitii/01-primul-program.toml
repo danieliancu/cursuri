@@ -1,0 +1,45 @@
+titlu = "Fișa de prezentare"
+enunt = "Afișează o fișă de prezentare: titlu încadrat, nume, vârstă, oraș, un rând gol și un calcul."
+structura = ["comentariu", "inmultire"]
+indicii = [
+    "Fiecare rând al fișei e un `print(...)` separat. Un `print()` fără nimic în paranteze afișează un rând gol.",
+    "Rândurile de încadrare pot fi scrise ca text, `print(\"==========\")`, sau calculate: `print(\"=\" * 20)`.",
+    "Pentru calcul, pune numerele direct în `print`, fără ghilimele în jurul lor: `print(\"Luni trăite:\", 30 * 12)`. Un comentariu începe cu `#`.",
+]
+inceput = '''
+# 1. Titlul, încadrat de două rânduri de „=” (exemplu: așa se scrie)
+print("=" * 30)
+print("   FIȘA MEA DE PREZENTARE")
+print("=" * 30)
+
+# 2. Numele, vârsta și orașul, fiecare pe rândul lui
+#    scrii așa: print("Nume:   Ana Popescu")
+
+
+# 3. Un rând gol
+#    scrii așa: print()
+
+
+# 4. Un calcul făcut de Python: câte luni ai trăit
+#    scrii așa: print("Luni trăite:", 30 * 12)
+'''
+solutie = '''
+# Fișa mea de prezentare
+print("=" * 20)
+print("  FIȘA DE PREZENTARE")
+print("=" * 20)
+print("Nume:  Ana Popescu")
+print("Vârstă: 30")
+print("Oraș:  Cluj")
+print()
+print("Luni trăite:", 30 * 12)
+'''
+
+[[test]]
+nume = "fișa afișată"
+regex = ['^[=-]{3,}$(.|\n)*?^[=-]{3,}$']
+regex_text = "titlul încadrat de două rânduri de `=` sau `-`"
+regex_de_ce = "Titlul trebuie încadrat de două rânduri făcute doar din `=` sau `-`."
+min_randuri = 6
+rand_gol = true
+de_ce = "Fișa are: titlul încadrat, numele, vârsta și orașul pe rânduri separate, un rând gol și rândul cu calculul."

@@ -754,3 +754,13 @@ code, code *, pre, pre *, kbd, .CodeMirror, .CodeMirror * {
   }
   .layout:not([data-pane="code"]) .tutor-float { display: none; }
 }
+
+/* Prima dată la un capitol: „Citește lecția” clipește până e deschisă (app.js: read-flash) */
+.course-topic .course-code.read-flash {
+  opacity: 1; color: #fff; background: #f97316; border-color: #ea580c;
+  animation: readFlash 1.1s ease-in-out infinite;
+}
+@keyframes readFlash {
+  50% { background: #fdba74; color: #7c2d12; box-shadow: 0 0 0 4px rgba(249, 115, 22, .45), 0 0 12px rgba(249, 115, 22, .6); }
+}
+@media (prefers-reduced-motion: reduce) { .course-code.read-flash { animation: none; } }

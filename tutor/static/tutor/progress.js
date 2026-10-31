@@ -103,8 +103,17 @@
   // ------------------------------------------------------------------ Subiect
   let lessonAbort = null;
 
+  // Lecțiile deschise măcar o dată: în editor, iconul „Citește lecția” nu mai clipește la ele (app.js).
+  function markRead(slug) {
+    const read = new Set(JSON.parse(store.get("pt-read-lessons", "[]")));
+    if (read.has(slug)) return;
+    read.add(slug);
+    store.set("pt-read-lessons", JSON.stringify([...read]));
+  }
+
   async function showTopic(slug) {
     current = slug;
+    markRead(slug);
     highlight();
     $("#layout").dataset.view = "topic";
     $("#topicEmpty").hidden = true;
@@ -247,9 +256,9 @@
     renderModules();
     if (location.hash) route();
     else if (matchMedia("(min-width: 761px)").matches) {
-      // Pe desktop deschidem direct subiectul la care lucrezi (sau primul neînvățat).
+      // Pe desktop deschidem direct lecția curentă (ultima deschisă de elev), altfel prima neînvățată.
       const all = data.modules.flatMap((m) => m.topics);
-      const next = all.find((t) => t.status === "în lucru") || all.find((t) => t.status === "de învățat") || all[0];
+      const next = all.find((t) => t.slug === data.current) || all.find((t) => t.status === "de învățat") || all[0];
       if (next) history.replaceState(null, "", "#" + next.slug), route();
     }
   }

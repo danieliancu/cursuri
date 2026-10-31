@@ -1,0 +1,59 @@
+titlu = "Bonul de cumpărături"
+enunt = "Un bon de cumpărături cu variabile: trei produse, totaluri și o reatribuire."
+structura = ["reatribuire", "inmultire", "apel:type"]
+indicii = [
+    "Fă câte două variabile pentru fiecare produs (preț și cantitate), apoi câte o variabilă cu totalul fiecărui produs.",
+    "Totalul pe produs e `pret_paine * cantitate_paine`; totalul general adună cele trei totaluri. Afișează-le cu `print(\"Pâine:\", total_paine)`.",
+    "Reatribuirea înseamnă să scrii din nou `pret_paine = ...` după calcul. `print(type(pret_paine))` îți arată tipul variabilei.",
+]
+inceput = '''
+# 1. Clientul și produsele: prețul pe bucată și cantitatea (exemplu: așa se scrie primul produs)
+client = "Ana"
+pret_paine = 4.5
+cantitate_paine = 2
+# scrii la fel și pentru celelalte două produse
+
+# 2. Totalul pe fiecare produs și totalul general
+#    scrii așa: total_paine = pret_paine * cantitate_paine
+
+
+# 3. Bonul: clientul, câte un rând pe produs, apoi totalul
+#    scrii așa: print("Pâine:", total_paine, "lei")
+
+
+# 4. Schimbă un preț DUPĂ calcul și afișează din nou totalul general
+#    scrii așa: pret_paine = 5.0
+
+
+# 5. Tipul a două variabile
+#    scrii așa: print(type(pret_paine))
+'''
+solutie = '''
+client = "Ana"
+pret_paine = 4.5
+cantitate_paine = 2
+pret_lapte = 7.0
+cantitate_lapte = 1
+pret_mere = 3.2
+cantitate_mere = 3
+
+total_paine = pret_paine * cantitate_paine
+total_lapte = pret_lapte * cantitate_lapte
+total_mere = pret_mere * cantitate_mere
+total_general = total_paine + total_lapte + total_mere
+
+print("Client:", client)
+print("Pâine:", total_paine)
+print("Lapte:", total_lapte)
+print("Mere:", total_mere)
+print("Total:", total_general)
+
+pret_paine = 5.0
+print("Total după schimbarea prețului:", total_general)
+print(type(pret_paine), type(cantitate_paine))
+'''
+
+[[test]]
+nume = "bonul afișat"
+min_randuri = 5
+de_ce = "Bonul are numele clientului, câte un rând pe fiecare dintre cele trei produse și totalul."

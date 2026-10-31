@@ -1,0 +1,58 @@
+titlu = "Situația școlară"
+enunt = "Situația școlară a lui Andrei, ca tabel aliniat cu f-strings."
+structura = ["fstring", "format"]
+indicii = [
+    "Calculează media unei materii ca `(nota1 + nota2 + nota3) / 3`, iar media generală ca media celor trei medii.",
+    "Lățimea și alinierea se scriu după `:` în acolade: `{materie:<15}` la stânga, `{nota:>5}` la dreapta, `{media:>6.2f}` cu 2 zecimale.",
+    "Titlul centrat: `latime = 41`, apoi `print(f\"{'Situația lui Andrei':^{latime}}\")`. Linia de separare: `print(\"-\" * latime)`.",
+]
+inceput = '''
+elev = "Andrei"
+latime = 41  # lățimea tabelului, folosită la titlu și la linia de separare
+
+# 1. Materiile și câte trei note (exemplu: așa se scrie prima materie)
+materie1 = "Matematică"
+m1_n1, m1_n2, m1_n3 = 9, 8, 10
+# scrii la fel pentru încă două materii
+
+# 2. Media fiecărei materii și media generală
+#    scrii așa: medie1 = (m1_n1 + m1_n2 + m1_n3) / 3
+
+
+# 3. Titlul centrat, apoi tabelul: materia la stânga (15), notele la dreapta (5), media cu 2 zecimale
+#    scrii așa: print(f"{'Situația lui ' + elev:^{latime}}")
+#               print(f"{materie1:<15}{m1_n1:>5}{m1_n2:>5}{m1_n3:>5}{medie1:>11.2f}")
+
+
+# 4. Linia de separare și media generală, sub coloana mediilor
+#    scrii așa: print("-" * latime)
+'''
+solutie = '''
+elev = "Andrei"
+latime = 41
+
+m1, a1, b1, c1 = "Matematică", 9, 8, 10
+m2, a2, b2, c2 = "Română", 7, 8.5, 9
+m3, a3, b3, c3 = "Istorie", 10, 9, 9
+
+medie1 = (a1 + b1 + c1) / 3
+medie2 = (a2 + b2 + c2) / 3
+medie3 = (a3 + b3 + c3) / 3
+generala = (medie1 + medie2 + medie3) / 3
+
+print(f"{'Situația lui ' + elev:^{latime}}")
+print(f"{'Materie':<15}{'N1':>5}{'N2':>5}{'N3':>5}{'Media':>11}")
+print(f"{m1:<15}{a1:>5}{b1:>5}{c1:>5}{medie1:>11.2f}")
+print(f"{m2:<15}{a2:>5}{b2:>5}{c2:>5}{medie2:>11.2f}")
+print(f"{m3:<15}{a3:>5}{b3:>5}{c3:>5}{medie3:>11.2f}")
+print("-" * latime)
+print(f"{'Media generală':<30}{generala:>11.2f}")
+'''
+
+[[test]]
+nume = "tabelul afișat"
+contine = ["Andrei"]
+regex = ['\d+\.\d\d\s*$(.|\n)*\d+\.\d\d\s*$(.|\n)*\d+\.\d\d\s*$']
+regex_text = "mediile cu 2 zecimale, la final de rând"
+regex_de_ce = "Mediile (cele trei de pe materii și media generală) trebuie afișate cu exact 2 zecimale, la dreapta tabelului."
+min_randuri = 6

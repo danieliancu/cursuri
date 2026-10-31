@@ -1,0 +1,68 @@
+titlu = "Pușculița"
+enunt = "Pușculița: suma țintă, apoi depuneri până la țintă sau „stop”, fără break."
+structura = ["while"]
+interzis = ["break"]
+indicii = [
+    "Prima buclă: `while not text.isdigit():` cere din nou ținta. A doua buclă merge cât timp `strans < tinta` (și utilizatorul n-a scris `stop`).",
+    "La fiecare depunere: dacă textul e `stop`, schimbi o variabilă (ex. `oprit = True`) pe care o verifică și condiția buclei; dacă nu e număr, afișezi un mesaj; altfel aduni suma și crești contorul.",
+    "Exemplu: țintă 100, depuneri 30, (gol), x, 50, 40 → 3 depuneri valide, total 120, media 40.00. După 30 trebuie să vezi că mai lipsesc 70.",
+]
+inceput = '''
+# 1. Suma țintă, cerută din nou cât timp nu e un număr întreg pozitiv (exemplu: așa se scrie)
+text = input("Suma țintă: ").strip()
+while not text.isdigit() or int(text) == 0:
+    text = input("Scrie un număr întreg pozitiv: ").strip()
+tinta = int(text)
+
+# 2. Depunerile, una câte una, până la țintă (sau până la „stop”, fără break)
+#    după fiecare: cât s-a strâns și cât mai lipsește
+#    scrii așa: while strans < tinta and not oprit:
+
+
+# 3. Un răspuns gol sau invalid afișează un mesaj și nu se numără
+#    scrii așa: elif not text.isdigit():
+#                   print("Depunerea trebuie să fie un număr întreg.")
+
+
+# 4. La final: câte depuneri, suma totală și media cu 2 zecimale
+#    scrii așa: print(f"Media: {strans / depuneri:.2f} lei")
+'''
+solutie = '''
+text = input("Suma țintă: ").strip()
+while not text.isdigit() or int(text) == 0:
+    text = input("Scrie un număr întreg pozitiv: ").strip()
+tinta = int(text)
+
+strans = 0
+depuneri = 0
+oprit = False
+while strans < tinta and not oprit:
+    text = input("Depunere: ").strip()
+    if text == "stop":
+        oprit = True
+    elif not text.isdigit():
+        print("Depunerea trebuie să fie un număr întreg.")
+    else:
+        strans += int(text)
+        depuneri += 1
+        print(f"Strâns: {strans} lei, mai lipsesc {max(tinta - strans, 0)} lei")
+
+if oprit:
+    print("Te-ai oprit înainte de țintă.")
+if depuneri > 0:
+    print(f"Depuneri: {depuneri}, total: {strans} lei, media: {strans / depuneri:.2f} lei")
+'''
+
+[[test]]
+nume = "ținta atinsă, cu răspunsuri invalide pe drum"
+stdin = "abc\n100\n30\n\nx\n50\n40\n"
+contine = ["70", "40.00"]
+regex = ['\b120\b', '\b3\b']
+regex_text = "3 depuneri valide și totalul 120"
+regex_de_ce = "Depunerile valide sunt 30, 50 și 40: 3 depuneri, total 120, media 40.00. Răspunsul gol și „x” nu se numără."
+
+[[test]]
+nume = "oprire cu stop"
+stdin = "50\n20\nstop\n"
+contine = ["20.00"]
+de_ce = "La „stop” programul se termină înainte de țintă: o depunere de 20, media 20.00."

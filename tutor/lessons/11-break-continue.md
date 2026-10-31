@@ -360,9 +360,9 @@ Iterații: 3, încercări numărate: 2
 
 ## Exercițiu
 
-În `capitole/11-break-continue/break_continue.py`:
+În `capitole/11-break-continue/break_continue.py` scrie cele trei părți una după alta, în ordinea de mai jos (programul le rulează pe rând):
 
-1. **Repară jocul.** Pornește de la exemplul complet și rescrie-l cu un `while` și un contor de încercări, astfel încât un număr deja încercat să **nu** consume o încercare. Păstrează mesajul de pierdere (îl poți scrie cu `else` la `while` sau cu o variabilă).
+1. **Repară jocul.** Pornește de la exemplul complet (numărul secret 37, 7 încercări) și rescrie-l cu un `while` și un contor de încercări, astfel încât un număr deja încercat să **nu** consume o încercare. Păstrează mesajul de pierdere, cu numărul secret în el (îl poți scrie cu `else` la `while` sau cu o variabilă).
 2. **Meniu cu while True.** Scrie un meniu de conversii: `1` = Celsius → Fahrenheit, `2` = km → mile (1 km = 0.621371 mile), `0` = ieșire. Folosește `while True` și `break` pentru ieșire, iar pentru o opțiune necunoscută afișează un mesaj și treci la iterația următoare cu `continue`. Valorile se validează ca în exemplul complet de la lecția 10 (`replace(",", ".")` și `replace(".", "", 1).isdigit()`); pentru temperaturi negative, dacă textul începe cu `-` (`text.startswith("-")`), verifică doar restul lui (`text[1:]`), dar convertește cu `float()` textul întreg, cu minus cu tot.
 3. **Căutare cu else.** Cere un cuvânt și verifică dacă are măcar o literă dublă alăturată (ca „ii” în „copii” sau „ee” în „idee”). Afișează prima pereche găsită sau, cu `else` la `for`, „Nicio literă dublă”. Indiciu: parcurge pozițiile cu `range(len(cuvant) - 1)` și compară `cuvant[i]` cu `cuvant[i + 1]`.
 
